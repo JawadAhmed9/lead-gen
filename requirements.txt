@@ -1,0 +1,21 @@
+# ─── PHASE 1: Core pipeline (Apollo + Hunter + Claude scoring) ───────────────
+httpx                  # all API calls (Apollo, Hunter, Claude, Brevo, Wappalyzer)
+
+# ─── PHASE 2: Cold email sending (Brevo) ─────────────────────────────────────
+# httpx already covers Brevo API calls — no new packages needed
+fastapi                # reply webhook server
+uvicorn                # ASGI server for FastAPI
+
+# ─── PHASE 3: Social scrapers (Reddit, LinkedIn jobs, forums) ────────────────
+praw                   # Reddit API (official)
+beautifulsoup4         # LinkedIn job posts + forum scraping
+
+# ─── PHASE 4: Google Ads ─────────────────────────────────────────────────────
+google-ads             # Google Ads API (Customer Match + Conversion upload)
+google-analytics-data  # GA4 API
+
+# ─── OPTIONAL: Daily scheduler ───────────────────────────────────────────────
+schedule               # python main.py --schedule
+
+# ─── Config: load secrets from .env (optional; built-in fallback exists) ──────
+python-dotenv

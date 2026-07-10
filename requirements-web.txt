@@ -1,0 +1,9 @@
+# Minimal dependencies for the deployed web service (API + built UI).
+# Excludes the heavy Phase 3/4 packages (praw, google-ads, google-analytics-data)
+# that the live collect/enrich/score/sales path does not use — keeps the
+# container build fast and avoids native-compile failures on small instances.
+httpx
+fastapi
+uvicorn
+python-dotenv
+python-multipart      # required for file uploads (Excel/CSV import)

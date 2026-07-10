@@ -1,0 +1,22 @@
+# Render Blueprint — one free web service running the Docker image.
+# Deploy: push this repo to GitHub, then in Render: New → Blueprint → pick the repo.
+services:
+  - type: web
+    name: lead-gen-ai
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /            # serves the app shell (200) — no auth needed
+    envVars:
+      # Set the values in the Render dashboard (sync:false = prompt, never stored in git)
+      - key: APOLLO_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      # Optional — only needed when you turn on email sending:
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: BREVO_SENDER_NAME
+        sync: false

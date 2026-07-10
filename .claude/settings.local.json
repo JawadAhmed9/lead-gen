@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/jawad/Downloads/**)",
+      "Bash(npm install *)",
+      "Bash(cp /c/Users/jawad/Downloads/shell_presentation.js /c/Users/jawad/Downloads/shell_presentation_run.js)",
+      "Bash(sed -i 's|/mnt/user-data/outputs/Shell_CLevel_Presentation.pptx|C:/Users/jawad/Downloads/Shell_CLevel_Presentation.pptx|' /c/Users/jawad/Downloads/shell_presentation_run.js)",
+      "Bash(node shell_presentation_run.js)",
+      "Bash(python C:/Users/jawad/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/8ac6f276-6318-4244-8dfa-d72e54863d58/9b4215f1-1351-4edb-9af4-f7c8744e0f47/skills/pptx/scripts/office/soffice.py --headless --convert-to pdf Shell_CLevel_Presentation.pptx)",
+      "Bash(python 'C:\\\\Users\\\\jawad\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\8ac6f276-6318-4244-8dfa-d72e54863d58\\\\9b4215f1-1351-4edb-9af4-f7c8744e0f47\\\\skills\\\\pptx\\\\scripts\\\\office\\\\soffice.py' --headless --convert-to pdf Shell_CLevel_Presentation.pptx)",
+      "Bash(python \"C:/Users/jawad/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/8ac6f276-6318-4244-8dfa-d72e54863d58/9b4215f1-1351-4edb-9af4-f7c8744e0f47/skills/pptx/scripts/office/soffice.py\" --headless --convert-to pdf \"C:/Users/jawad/Downloads/Shell_CLevel_Presentation.pptx\")",
+      "PowerShell(python \"C:\\\\Users\\\\jawad\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\8ac6f276-6318-4244-8dfa-d72e54863d58\\\\9b4215f1-1351-4edb-9af4-f7c8744e0f47\\\\skills\\\\pptx\\\\scripts\\\\office\\\\soffice.py\" --headless --convert-to pdf \"C:\\\\Users\\\\jawad\\\\Downloads\\\\Shell_CLevel_Presentation.pptx\" 2>&1)",
+      "Bash(pip install *)"
+    ]
+  }
+}

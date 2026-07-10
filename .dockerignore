@@ -1,0 +1,15 @@
+# Keep the image small and secrets out of it.
+.env                     # secrets — set these as env vars in Render instead
+.git
+__pycache__/
+**/__pycache__/
+*.pyc
+venv/
+.venv/
+ui/node_modules
+node_modules
+ui/dist                  # rebuilt fresh in the Docker UI stage
+*.log
+.DS_Store
+# NOTE: data/leads.db is intentionally NOT ignored — it ships as the baseline
+# dataset so testers always start from your real ~913 leads + seeded users.

@@ -1,0 +1,20 @@
+# secrets
+.env
+
+# python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# node / frontend build
+node_modules/
+ui/node_modules/
+ui/dist/
+
+# os / misc
+.DS_Store
+*.log
+
+# NOTE: data/leads.db is intentionally tracked — it's the baseline dataset the
+# app ships with. Keep this repo PRIVATE (it contains real contact info).
