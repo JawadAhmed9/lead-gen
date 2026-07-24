@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { UserPlus, Trash2, Shield, X, Mail, Users2, RefreshCw } from 'lucide-react'
 import { usersApi, can } from './api'
 import { useAuth, pageAnim } from './App'
-import { useToast, Skeleton } from './ui'
+import { useToast, useConfirm, Skeleton } from './ui'
 
 const ROLE_STYLE = {
   admin: 'bg-purple-50 text-purple-700 border-purple-100',
@@ -15,6 +15,7 @@ const ROLE_STYLE = {
 export default function Team() {
   const { user } = useAuth()
   const { push } = useToast()
+  const confirm = useConfirm()
   const [members, setMembers] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'agent' })
@@ -37,7 +38,7 @@ export default function Team() {
   }
 
   const remove = async (m) => {
-    if (!confirm(`Remove ${m.name}?`)) return
+    if (!(await confirm({ title: `Remove ${m.name}?`, message: 'They will lose access immediately.', confirmLabel: 'Remove', danger: true }))) return
     try { await usersApi.remove(m.id); setMembers(list => list.filter(x => x.id !== m.id)); push(`Removed ${m.name}`, 'info') }
     catch (err) { push(err.message, 'error') }
   }

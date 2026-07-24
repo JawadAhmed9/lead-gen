@@ -4,13 +4,13 @@ import {
   Search, Plus, Trash2, ChevronLeft, ChevronRight,
   Download, X, SlidersHorizontal, Mail, Upload,
   FileSpreadsheet, CheckCircle, AlertCircle, Loader, Zap,
-  Bookmark, BookmarkPlus, CheckSquare, Square, UserCheck,
+  Bookmark, BookmarkPlus, CheckSquare, Square, UserCheck, Phone,
 } from 'lucide-react'
 import { leadsApi, usersApi, can } from './api'
 import { useAuth, pageAnim } from './App'
 import { useNavigate, useLocation } from 'react-router-dom'
 import LeadDrawer from './LeadDrawer'
-import { useToast } from './ui'
+import { useToast, useConfirm } from './ui'
 
 const SEG_KEY = 'lp_segments'
 const loadSegments = () => { try { return JSON.parse(localStorage.getItem(SEG_KEY)) || [] } catch { return [] } }
@@ -415,12 +415,17 @@ function AddModal({ onClose, onDone }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 const STATUSES = ['raw','enriched','scored','queued','sent','replied']
 const SOURCES  = ['apollo','import']
+const SORTABLE = { 'Contact': 'name', 'Company': 'company', 'Status': 'status', 'ICP Score': 'score' }
 
 export default function Leads() {
   const { user }       = useAuth()
   const navigate       = useNavigate()
   const location       = useLocation()
   const { push }       = useToast()
+  const confirm        = useConfirm()
+  const [sortBy, setSortBy] = useState('created')
+  const [sortDir, setSortDir] = useState('desc')
+  const [pageSize, setPageSize] = useState(25)
   const [data, setData]         = useState({ leads: [], total: 0, pages: 1 })
   const [page, setPage]         = useState(1)
   const [rawSearch, setRawSearch] = useState('')
@@ -439,6 +444,8 @@ export default function Leads() {
   const [agents, setAgents]         = useState([])
   const [assignAgent, setAssignAgent] = useState('')
   const [assigning, setAssigning]   = useState(false)
+  const [ownerFilter, setOwnerFilter] = useState('')   // '' | 'unassigned' | agentId
+  const [drawerAction, setDrawerAction] = useState(null)
 
   // Load assignable agents (managers/admins only)
   useEffect(() => {
@@ -447,11 +454,36 @@ export default function Leads() {
     }
   }, [user])
 
+  const openDrawer = (id, action = null) => { setDrawerAction(action); setDrawerId(id) }
+
+  // Inline per-row assign / reassign / unassign
+  const assignOne = async (id, agentId) => {
+    try {
+      await leadsApi.assign(id, agentId || null)
+      const name = agents.find(a => a.id === agentId)?.name || null
+      setData(d => ({ ...d, leads: d.leads.map(l => l.id === id
+        ? { ...l, assigned_to: agentId || null, assigned_to_name: name } : l) }))
+      push(agentId ? `Assigned to ${name}` : 'Unassigned', 'success')
+    } catch (e) { push(`Assign failed: ${e.message}`, 'error') }
+  }
+
   const bulkAssign = async () => {
     if (!assignAgent) { push('Pick an agent first', 'error'); return }
+    let ids = [...selected]
+    // Re-assignment guard: don't silently overwrite existing owners
+    const owned = ids.filter(id => data.leads.find(l => l.id === id)?.assigned_to)
+    if (owned.length) {
+      const ok = await confirm({
+        title: 'Some leads are already assigned',
+        message: `${owned.length} of ${ids.length} selected already have an owner.\nReassign all to the new agent, or assign only the ${ids.length - owned.length} unassigned?`,
+        confirmLabel: 'Reassign all', cancelLabel: 'Only unassigned',
+      })
+      if (!ok) ids = ids.filter(id => !data.leads.find(l => l.id === id)?.assigned_to)
+    }
+    if (!ids.length) { push('Nothing to assign', 'info'); return }
     setAssigning(true)
     try {
-      const r = await leadsApi.bulkAssign([...selected], assignAgent)
+      const r = await leadsApi.bulkAssign(ids, assignAgent)
       const name = agents.find(a => a.id === assignAgent)?.name || 'agent'
       push(`Assigned ${r.assigned} lead${r.assigned === 1 ? '' : 's'} to ${name}`, 'success')
       clearSel(); setAssignAgent(''); fetch()
@@ -498,14 +530,22 @@ export default function Leads() {
 
   const fetch = useCallback(async () => {
     setLoading(true)
-    const params = { page, limit: 25 }
+    const params = { page, limit: pageSize, sort: sortBy, direction: sortDir }
     if (search) params.search = search
     if (statusFilter) params.status = statusFilter
     if (sourceFilter) params.source = sourceFilter
+    if (ownerFilter) params.assigned_to = ownerFilter
     const res = await leadsApi.list(params).catch(() => ({ leads: [], total: 0, pages: 1 }))
     setData(res)
     setLoading(false)
-  }, [page, search, statusFilter, sourceFilter])
+  }, [page, search, statusFilter, sourceFilter, ownerFilter, sortBy, sortDir, pageSize])
+
+  // Toggle sort on a column (click header)
+  const toggleSort = (col) => {
+    if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(col); setSortDir('desc') }
+    setPage(1)
+  }
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -516,7 +556,7 @@ export default function Leads() {
   }, [rawSearch])
 
   const deleteLead = async (id) => {
-    if (!confirm('Remove this lead from the pipeline? This cannot be undone.')) return
+    if (!(await confirm({ title: 'Remove lead?', message: 'This deletes the lead and its history. This cannot be undone.', confirmLabel: 'Remove', danger: true }))) return
     setDeleting(id)
     await leadsApi.remove(id).catch(console.error)
     fetch()
@@ -663,6 +703,20 @@ export default function Leads() {
             </button>
           ))}
         </div>
+
+        {/* Owner filter (managers/admins) */}
+        {can(user, 'assign') && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-400 font-medium ml-1 uppercase tracking-wide">Owner</span>
+            <select value={ownerFilter} onChange={e => { setOwnerFilter(e.target.value); setPage(1) }}
+              className="px-3 py-2 rounded-lg text-xs font-medium border border-slate-200 text-slate-600 bg-white
+                         focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">All owners</option>
+              <option value="unassigned">Unassigned</option>
+              {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Saved views */}
@@ -706,13 +760,23 @@ export default function Leads() {
                     </button>
                   </th>
                 )}
-                {COLS.map(({ label, w }) => (
-                  <th key={label}
-                    className={`px-4 py-3 text-left text-[11px] font-semibold text-slate-500
-                                uppercase tracking-wider whitespace-nowrap ${w}`}>
-                    {label}
-                  </th>
-                ))}
+                {COLS.map(({ label, w }) => {
+                  const skey = SORTABLE[label]
+                  return (
+                    <th key={label}
+                      className={`px-4 py-3 text-left text-[11px] font-semibold text-slate-500
+                                  uppercase tracking-wider whitespace-nowrap ${w}`}>
+                      {skey ? (
+                        <button onClick={() => toggleSort(skey)}
+                          className={`inline-flex items-center gap-1 uppercase tracking-wider transition-colors
+                                      ${sortBy === skey ? 'text-slate-800' : 'hover:text-slate-700'}`}>
+                          {label}
+                          <span className="text-[9px]">{sortBy === skey ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        </button>
+                      ) : label}
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>
@@ -747,7 +811,7 @@ export default function Leads() {
                     <motion.tr key={lead.id}
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                       transition={{ delay: Math.min(i, 12) * 0.02 }}
-                      onClick={() => setDrawerId(lead.id)}
+                      onClick={() => openDrawer(lead.id)}
                       className={`border-b border-slate-50 hover:bg-slate-50/60 transition-colors group cursor-pointer
                                   ${selected.has(lead.id) ? 'bg-blue-50/40' : ''}`}
                     >
@@ -808,19 +872,37 @@ export default function Leads() {
                       </td>
                       <td className="px-4 py-3.5"><Badge map={STATUS} value={lead.status} /></td>
                       <td className="px-4 py-3.5"><Score v={lead.icp_score} /></td>
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        {lead.assigned_to_name
-                          ? <span className="inline-flex items-center gap-1.5 text-xs text-slate-600">
-                              <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] flex items-center justify-center font-semibold">
-                                {lead.assigned_to_name[0]?.toUpperCase()}
+                      <td className="px-4 py-3.5 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                        {can(user, 'assign') ? (
+                          <select value={lead.assigned_to || ''} onChange={e => assignOne(lead.id, e.target.value)}
+                            className={`text-xs border rounded-lg px-2 py-1 bg-white max-w-[140px] focus:outline-none focus:ring-2 focus:ring-blue-500
+                                        ${lead.assigned_to ? 'border-slate-200 text-slate-700' : 'border-dashed border-slate-300 text-slate-400'}`}>
+                            <option value="">Unassigned</option>
+                            {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                          </select>
+                        ) : (
+                          lead.assigned_to_name
+                            ? <span className="inline-flex items-center gap-1.5 text-xs text-slate-600">
+                                <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] flex items-center justify-center font-semibold">
+                                  {lead.assigned_to_name[0]?.toUpperCase()}
+                                </span>
+                                {lead.assigned_to_name}
                               </span>
-                              {lead.assigned_to_name}
-                            </span>
-                          : <span className="text-xs text-slate-300">Unassigned</span>}
+                            : <span className="text-xs text-slate-300">Unassigned</span>
+                        )}
                       </td>
                       {/* Actions */}
                       <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {can(user, 'log') && (
+                            <button
+                              onClick={() => openDrawer(lead.id, 'call')}
+                              title="Log a call"
+                              className="p-1.5 hover:bg-cyan-50 hover:text-cyan-600 rounded-lg
+                                         transition-colors text-slate-400">
+                              <Phone size={14} />
+                            </button>
+                          )}
                           {can(user, 'edit') && (
                             <button
                               onClick={() => scoreLead(lead.id)}
@@ -861,12 +943,21 @@ export default function Leads() {
           </table>
         </div>
 
-        {/* Pagination */}
-        {data.pages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-100 bg-slate-50/40">
+        {/* Footer: total + page size + pager */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-100 bg-slate-50/40">
+          <div className="flex items-center gap-4">
             <p className="text-xs text-slate-500">
-              Page {page} of {data.pages} &mdash; {data.total.toLocaleString()} leads
+              {data.total.toLocaleString()} leads &mdash; page {page} of {data.pages}
             </p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-slate-400">Rows</span>
+              <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}
+                className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {[25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+          </div>
+          {data.pages > 1 && (
             <div className="flex items-center gap-1">
               <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}
                 className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50
@@ -892,8 +983,8 @@ export default function Leads() {
                 <ChevronRight size={14} className="text-slate-600" />
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Bulk action bar */}
@@ -936,8 +1027,8 @@ export default function Leads() {
 
       <AnimatePresence>
         {drawerId && (
-          <LeadDrawer leadId={drawerId} user={user}
-            onClose={() => setDrawerId(null)}
+          <LeadDrawer leadId={drawerId} user={user} initialAction={drawerAction}
+            onClose={() => { setDrawerId(null); setDrawerAction(null) }}
             onChanged={fetch}
             onCompose={(lead) => { setDrawerId(null); navigate('/compose', { state: { lead } }) }} />
         )}

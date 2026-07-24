@@ -35,6 +35,7 @@ export const auth = {
   login:  (email, password) => post('/auth/login', { email, password }),
   logout: ()                => post('/auth/logout'),
   me:     ()                => get('/auth/me'),
+  changePassword: (current_password, new_password) => post('/auth/password', { current_password, new_password }),
 }
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
@@ -90,6 +91,8 @@ export const pipelineApi = {
   status:       ()         => get('/pipeline/status'),
   getSettings:  ()         => get('/pipeline/settings'),
   saveSettings: (settings) => post('/pipeline/settings', settings),
+  rotation:     ()         => get('/pipeline/rotation'),
+  regenerate:   ()         => post('/pipeline/rotation/regenerate'),
 }
 
 // ─── Users / RBAC ─────────────────────────────────────────────────────────────

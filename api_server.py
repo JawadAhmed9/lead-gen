@@ -130,6 +130,21 @@ def logout(user=Depends(current_user), authorization: str = Header(None)):
 def me(user=Depends(current_user)):
     return public_user(user)
 
+class PasswordReq(BaseModel):
+    current_password: str
+    new_password: str
+
+@app.post("/api/auth/password")
+def change_password(req: PasswordReq, user=Depends(current_user)):
+    full = sales.get_user_by_id(user["id"])
+    if not full or not sales.verify_pw(req.current_password, full.get("password", "")):
+        raise HTTPException(400, "Current password is incorrect")
+    if len(req.new_password) < 6:
+        raise HTTPException(400, "New password must be at least 6 characters")
+    sales.set_password(user["id"], req.new_password)
+    log_activity(user, "auth.password", "Changed own password")
+    return {"ok": True}
+
 
 # ─── Stats ────────────────────────────────────────────────────────────────────
 
@@ -216,10 +231,14 @@ def get_activity(limit: int = 50, user=Depends(current_user)):
 
 # ─── Leads ────────────────────────────────────────────────────────────────────
 
+_SORT_COLS = {"company": "r.company", "status": "r.status", "score": "s.icp_score",
+              "created": "r.fetched_at", "name": "r.first_name"}
+
 @app.get("/api/leads")
 def get_leads(
     page: int = 1, limit: int = 25,
     search: str = "", status: str = "", source: str = "", assigned_to: str = "",
+    sort: str = "created", direction: str = "desc",
     user=Depends(current_user),
 ):
     conn = db()
@@ -260,7 +279,7 @@ def get_leads(
         LEFT JOIN scored_leads s ON s.lead_id = r.id
         LEFT JOIN users ua ON ua.id = r.assigned_to
         {where}
-        ORDER BY r.fetched_at DESC
+        ORDER BY {_SORT_COLS.get(sort, "r.fetched_at")} {"ASC" if direction == "asc" else "DESC"}
         LIMIT ? OFFSET ?
     """, params + [limit, (page - 1) * limit]).fetchall()
 
@@ -479,6 +498,7 @@ async def import_leads(file: UploadFile = File(...), user=Depends(current_user))
         "imported":  result["imported"],
         "skipped":   result["skipped"],
         "errors":    result["errors"],
+        "sheets":    result.get("sheets", []),
     }
 
 
@@ -486,22 +506,36 @@ async def import_leads(file: UploadFile = File(...), user=Depends(current_user))
 
 PIPELINE_SETTINGS_FILE = Path(__file__).parent / "pipeline_settings.json"
 
-def _load_pipeline_settings() -> dict:
-    if PIPELINE_SETTINGS_FILE.exists():
-        try:
-            return json.loads(PIPELINE_SETTINGS_FILE.read_text())
-        except Exception:
-            pass
-    # Defaults — mirror config.py APOLLO_SEARCH
+def _pipeline_defaults() -> dict:
     from config import APOLLO_SEARCH
     return {
         "person_titles": APOLLO_SEARCH.get("person_titles", []),
         "person_locations": APOLLO_SEARCH.get("person_locations", [
             "Saudi Arabia", "United Arab Emirates", "Qatar", "Kuwait", "Bahrain", "Oman"
         ]),
-        "organization_num_employees_ranges": APOLLO_SEARCH.get("organization_num_employees_ranges", ["51,200","201,1000","1001,5000"]),
+        "organization_num_employees_ranges": APOLLO_SEARCH.get(
+            "organization_num_employees_ranges", ["51,200", "201,1000", "1001,5000"]),
         "pages": 2,
+        # ─── Rotation + accuracy filters ───
+        "rotation_enabled": True,
+        "industries": ["manufacturing", "industrial automation", "oil and gas",
+                       "chemicals", "machinery", "mining", "plastics", "packaging",
+                       "food processing", "automotive"],
+        "seniorities": ["owner", "c_suite", "vp", "director", "manager"],
+        "per_page": 100,            # 4x more leads per search call than the old 25
+        "reveal_contacts": False,   # unlock email/phone via Apollo credits (opt-in)
+        "contact_email_status": [], # e.g. ["verified"] for reachable-only (fewer, higher quality)
     }
+
+def _load_pipeline_settings() -> dict:
+    """Merge saved settings over defaults, so newly-added keys always resolve."""
+    base = _pipeline_defaults()
+    if PIPELINE_SETTINGS_FILE.exists():
+        try:
+            base.update(json.loads(PIPELINE_SETTINGS_FILE.read_text()))
+        except Exception:
+            pass
+    return base
 
 @app.get("/api/pipeline/settings")
 def get_pipeline_settings(user=Depends(current_user)):
@@ -523,26 +557,52 @@ def trigger_step(step: str, user=Depends(current_user)):
         raise HTTPException(400, "Invalid step")
     import subprocess, sys
     env = os.environ.copy()
+    run_label = step
     if step == "apollo-only":
-        settings   = _load_pipeline_settings()
-        pages      = settings.get("pages", 2)
-        start_page = settings.get("page_offset", 1)
-        env["PIPELINE_PAGES"]      = str(pages)
-        env["PIPELINE_START_PAGE"] = str(start_page)
-        env["PIPELINE_TITLES"]     = json.dumps(settings.get("person_titles", []))
-        env["PIPELINE_LOCATIONS"]  = json.dumps(settings.get("person_locations", []))
-        env["PIPELINE_EMP_RANGES"] = json.dumps(settings.get("organization_num_employees_ranges", []))
-        # Advance page_offset so next run fetches the next batch of Apollo pages
-        settings["page_offset"] = start_page + pages
-        PIPELINE_SETTINGS_FILE.write_text(json.dumps(settings, indent=2))
+        settings = _load_pipeline_settings()
+        pages = settings.get("pages", 2)
+        # Shared accuracy filters passed to every collect run
+        env["PIPELINE_PER_PAGE"]     = str(settings.get("per_page", 100))
+        env["PIPELINE_REVEAL"]       = "1" if settings.get("reveal_contacts") else "0"
+        env["PIPELINE_EMAIL_STATUS"] = json.dumps(settings.get("contact_email_status", []))
+        env["PIPELINE_SENIORITIES"]  = json.dumps(settings.get("seniorities", []))
+        env["PIPELINE_INDUSTRIES"]   = json.dumps(settings.get("industries", []))
+
+        if settings.get("rotation_enabled", True):
+            # Rotate to the next filter profile; each keeps its own page offset.
+            import rotation
+            profs = rotation.ensure_profiles(settings)
+            prof = rotation.next_profile(profs)
+            off = prof.get("offset", 1); pg = prof.get("pages", pages)
+            env["PIPELINE_PAGES"]      = str(pg)
+            env["PIPELINE_START_PAGE"] = str(off)
+            env["PIPELINE_TITLES"]     = json.dumps(prof.get("person_titles", []))
+            env["PIPELINE_LOCATIONS"]  = json.dumps(prof.get("person_locations", []))
+            env["PIPELINE_EMP_RANGES"] = json.dumps(prof.get("organization_num_employees_ranges", []))
+            if prof.get("industries"):
+                env["PIPELINE_INDUSTRIES"] = json.dumps(prof["industries"])
+            if prof.get("seniorities"):
+                env["PIPELINE_SENIORITIES"] = json.dumps(prof["seniorities"])
+            rotation.record_run(profs, prof["id"], pg)
+            run_label = f"profile '{prof['name']}' pages {off}–{off + pg - 1}"
+        else:
+            # Legacy single-search sweep
+            start_page = settings.get("page_offset", 1)
+            env["PIPELINE_PAGES"]      = str(pages)
+            env["PIPELINE_START_PAGE"] = str(start_page)
+            env["PIPELINE_TITLES"]     = json.dumps(settings.get("person_titles", []))
+            env["PIPELINE_LOCATIONS"]  = json.dumps(settings.get("person_locations", []))
+            env["PIPELINE_EMP_RANGES"] = json.dumps(settings.get("organization_num_employees_ranges", []))
+            settings["page_offset"] = start_page + pages
+            PIPELINE_SETTINGS_FILE.write_text(json.dumps(settings, indent=2))
+            run_label = f"pages {start_page}–{start_page + pages - 1}"
     subprocess.Popen(
         [sys.executable, "main.py", "--step", step],
         cwd=str(Path(__file__).parent),
         env=env,
     )
     if step == "apollo-only":
-        log_activity(user, "pipeline.run",
-                     f"Collect run — pages {start_page}–{start_page + pages - 1} (offset advances, no re-fetch)")
+        log_activity(user, "pipeline.run", f"Collect — {run_label} (rotating filters, no re-fetch)")
     else:
         log_activity(user, "pipeline.run", f"Triggered '{step}' step")
     return {"ok": True, "step": step}
@@ -552,6 +612,34 @@ def pipeline_status(user=Depends(current_user)):
     """Returns current lead counts — used to poll progress after triggering a step."""
     from database import get_stats
     return get_stats()
+
+
+# ─── Filter rotation ──────────────────────────────────────────────────────────
+
+@app.get("/api/pipeline/rotation")
+def pipeline_rotation(user=Depends(current_user)):
+    import rotation
+    settings = _load_pipeline_settings()
+    enabled = settings.get("rotation_enabled", True)
+    profs = rotation.ensure_profiles(settings) if enabled else []
+    return {
+        "enabled": enabled,
+        "profiles": profs,
+        "next": rotation.next_profile(profs) if profs else None,
+        "reveal_contacts": settings.get("reveal_contacts", False),
+        "per_page": settings.get("per_page", 100),
+        "industries": settings.get("industries", []),
+        "seniorities": settings.get("seniorities", []),
+    }
+
+@app.post("/api/pipeline/rotation/regenerate")
+def pipeline_rotation_regenerate(user=Depends(current_user)):
+    """Rebuild the profile grid from current filters (resets per-profile offsets)."""
+    require(user, "admin", "manager")
+    import rotation
+    profs = rotation.regenerate(_load_pipeline_settings())
+    log_activity(user, "pipeline.rotation", f"Regenerated {len(profs)} search profiles")
+    return {"ok": True, "count": len(profs)}
 
 
 # ─── Users / RBAC ─────────────────────────────────────────────────────────────

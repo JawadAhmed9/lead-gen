@@ -91,6 +91,17 @@ def run_apollo_only(pages: int = 2):
     if _os.getenv("PIPELINE_EMP_RANGES"):
         from config import APOLLO_SEARCH
         APOLLO_SEARCH["organization_num_employees_ranges"] = _json.loads(_os.getenv("PIPELINE_EMP_RANGES"))
+    # Accuracy filters + rotation extras (all optional, backward-compatible)
+    from config import APOLLO_SEARCH
+    if _os.getenv("PIPELINE_SENIORITIES"):
+        APOLLO_SEARCH["person_seniorities"] = _json.loads(_os.getenv("PIPELINE_SENIORITIES"))
+    if _os.getenv("PIPELINE_INDUSTRIES"):
+        APOLLO_SEARCH["q_organization_keyword_tags"] = _json.loads(_os.getenv("PIPELINE_INDUSTRIES"))
+    if _os.getenv("PIPELINE_EMAIL_STATUS"):
+        APOLLO_SEARCH["contact_email_status"] = _json.loads(_os.getenv("PIPELINE_EMAIL_STATUS"))
+    if _os.getenv("PIPELINE_PER_PAGE"):
+        APOLLO_SEARCH["per_page"] = int(_os.getenv("PIPELINE_PER_PAGE"))
+    APOLLO_SEARCH["reveal"] = _os.getenv("PIPELINE_REVEAL", "0") == "1"
     start_page = int(_os.getenv("PIPELINE_START_PAGE", "1"))
 
     print(f"\n[APOLLO-ONLY MODE] Collect + org enrich + rule-based score (pages {start_page}–{start_page + pages - 1})...")

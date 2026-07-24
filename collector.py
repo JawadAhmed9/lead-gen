@@ -32,10 +32,36 @@ APOLLO_HEADERS = {
 }
 
 
-def _bulk_enrich(raw_people: list[dict]) -> dict[str, dict]:
+def build_search_params(page: int) -> dict:
+    """Construct Apollo api_search query params from APOLLO_SEARCH.
+    Extra filters (seniority, industry keyword tags, verified-email) are only
+    added when present, so behaviour is unchanged if they aren't configured.
+    Kept as a standalone function so it can be unit-tested without hitting Apollo."""
+    s = APOLLO_SEARCH
+    params: dict = {
+        "per_page": s.get("per_page", 25),
+        "page": page,
+    }
+
+    def add(key: str, values):
+        vals = [v for v in (values or []) if v not in (None, "")]
+        if vals:
+            params[key] = vals
+
+    add("person_titles[]", s.get("person_titles", []))
+    add("person_locations[]", s.get("person_locations", []))
+    add("organization_num_employees_ranges[]", s.get("organization_num_employees_ranges", []))
+    add("person_seniorities[]", s.get("person_seniorities", []))
+    add("q_organization_keyword_tags[]", s.get("q_organization_keyword_tags", []))
+    add("contact_email_status[]", s.get("contact_email_status", []))
+    return params
+
+
+def _bulk_enrich(raw_people: list[dict], reveal: bool = False) -> dict[str, dict]:
     """
     Calls people/bulk_match using Apollo person IDs (10 per batch).
     Returns a dict keyed by Apollo person ID.
+    When reveal=True, asks Apollo to unlock personal email/phone (spends credits).
     """
     if not raw_people:
         return {}
@@ -44,10 +70,15 @@ def _bulk_enrich(raw_people: list[dict]) -> dict[str, dict]:
     result = {}
     for batch_start in range(0, len(details), 10):
         batch = details[batch_start:batch_start + 10]
+        payload = {"details": batch}
+        if reveal:
+            # These flags consume Apollo credits — off unless explicitly enabled.
+            payload["reveal_personal_emails"] = True
+            payload["reveal_phone_number"] = True
         try:
             resp = httpx.post(
                 "https://api.apollo.io/v1/people/bulk_match",
-                json={"details": batch},
+                json=payload,
                 headers=APOLLO_HEADERS,
                 timeout=30,
             )
@@ -72,19 +103,7 @@ def fetch_apollo_leads(page: int = 1) -> list[dict]:
       2. people/bulk_match — spends credits, returns full profiles.
     """
     # api_search takes query params (not JSON body) per Apollo's OpenAPI spec
-    params = {
-        "per_page": APOLLO_SEARCH.get("per_page", 25),
-        "page": page,
-    }
-    for title in APOLLO_SEARCH.get("person_titles", []):
-        params.setdefault("person_titles[]", [])
-        params["person_titles[]"].append(title)
-    for loc in APOLLO_SEARCH.get("person_locations", []):
-        params.setdefault("person_locations[]", [])
-        params["person_locations[]"].append(loc)
-    for r in APOLLO_SEARCH.get("organization_num_employees_ranges", []):
-        params.setdefault("organization_num_employees_ranges[]", [])
-        params["organization_num_employees_ranges[]"].append(r)
+    params = build_search_params(page)
 
     try:
         resp = httpx.post(
@@ -107,7 +126,7 @@ def fetch_apollo_leads(page: int = 1) -> list[dict]:
         return []
 
     # Step 2: enrich to get full field values
-    enriched_map = _bulk_enrich(raw_people)
+    enriched_map = _bulk_enrich(raw_people, reveal=APOLLO_SEARCH.get("reveal", False))
 
     leads = []
     for p in raw_people:

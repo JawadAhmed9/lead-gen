@@ -69,6 +69,7 @@ export default function Pipeline({ user }) {
   const [settings, setSettings]     = useState(null)
   const [saving, setSaving]         = useState(false)
   const [saved, setSaved]           = useState(false)
+  const [rotation, setRotation]     = useState(null)
   const pollRef                     = useRef(null)
 
   const fetchStats = async () => {
@@ -81,9 +82,26 @@ export default function Pipeline({ user }) {
     if (s) setSettings(s)
   }
 
+  const fetchRotation = async () => {
+    const r = await pipelineApi.rotation().catch(() => null)
+    if (r) setRotation(r)
+  }
+
+  const regenerateProfiles = async () => {
+    await pipelineApi.regenerate().catch(console.error)
+    fetchRotation()
+  }
+
+  const toggleReveal = () => {
+    const next = { ...settings, reveal_contacts: !settings.reveal_contacts }
+    setSettings(next)
+    pipelineApi.saveSettings({ reveal_contacts: next.reveal_contacts }).catch(console.error)
+  }
+
   useEffect(() => {
     fetchStats()
     fetchSettings()
+    fetchRotation()
   }, [])
 
   const startPoll = () => {
@@ -113,6 +131,7 @@ export default function Pipeline({ user }) {
     await pipelineApi.trigger('apollo-only').catch(console.error)
     // Refresh settings so page_offset reflects the advance done by the server
     fetchSettings()
+    fetchRotation()
     startPoll()
   }
 
@@ -235,6 +254,68 @@ export default function Pipeline({ user }) {
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* Filter rotation */}
+      {rotation && rotation.enabled && (
+        <div className="bg-white border border-slate-100 rounded-2xl p-6 mb-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-1">
+            <RefreshCw size={15} className="text-slate-400" />
+            <h2 className="text-sm font-semibold text-slate-700">Filter Rotation</h2>
+            <span className="ml-auto text-xs text-slate-400">{rotation.profiles.length} profiles</span>
+          </div>
+          <p className="text-xs text-slate-500 mb-3">
+            Each Collect run auto-rotates to the next filter combination (location × company size), so you keep surfacing new leads instead of re-pulling the same ones.
+          </p>
+
+          {rotation.next && (
+            <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-blue-800 mb-3">
+              Next run targets <b>{rotation.next.name}</b> — starting Apollo page {rotation.next.offset}
+            </div>
+          )}
+
+          {canCollect && (
+            <div className="flex items-center justify-between py-2.5 border-t border-slate-100">
+              <div>
+                <p className="text-xs font-medium text-slate-700">Reveal emails &amp; phone numbers</p>
+                <p className="text-[11px] text-slate-400">Unlocks contacts via Apollo credits — off by default</p>
+              </div>
+              <button onClick={toggleReveal}
+                className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0
+                            ${settings?.reveal_contacts ? 'bg-emerald-500' : 'bg-slate-200'}`}>
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform
+                                  ${settings?.reveal_contacts ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+          )}
+
+          {settings?.industries?.length > 0 && (
+            <div className="py-2.5 border-t border-slate-100">
+              <p className="text-[11px] text-slate-400 mb-1.5 uppercase tracking-wide">Industry keywords</p>
+              <div className="flex flex-wrap gap-1.5">
+                {settings.industries.map(i => (
+                  <span key={i} className="px-2 py-0.5 bg-slate-100 rounded text-[11px] text-slate-600">{i}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-2 max-h-44 overflow-y-auto">
+            {rotation.profiles.map(p => (
+              <div key={p.id} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-50 last:border-0">
+                <span className="text-slate-600">{p.name}</span>
+                <span className="text-slate-400 tabular-nums">page {p.offset} · {p.runs} run{p.runs === 1 ? '' : 's'}</span>
+              </div>
+            ))}
+          </div>
+
+          {canCollect && (
+            <button onClick={regenerateProfiles}
+              className="mt-3 text-xs text-blue-600 hover:text-blue-700 font-medium">
+              Regenerate profiles from current filters
+            </button>
+          )}
         </div>
       )}
 

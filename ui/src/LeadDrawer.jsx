@@ -6,7 +6,7 @@ import {
   MessageSquare, StickyNote, Award, DollarSign, Plus,
 } from 'lucide-react'
 import { leadsApi, can } from './api'
-import { useToast, Skeleton } from './ui'
+import { useToast, Skeleton, fmtDateTime } from './ui'
 
 const STATUS_STYLE = {
   raw: 'bg-slate-100 text-slate-600', enriched: 'bg-blue-50 text-blue-700',
@@ -56,12 +56,13 @@ function Row({ icon: Icon, label, value, mono }) {
   )
 }
 
-export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged }) {
+export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged, initialAction }) {
   const { push } = useToast()
   const [d, setD] = useState(null)
   const [loading, setLoading] = useState(true)
   const [scoring, setScoring] = useState(false)
   const [acts, setActs] = useState([])
+  const [tab, setTab] = useState('overview')            // overview | activity
   const [logType, setLogType] = useState(null)          // call | reply | note | deal
   const [logForm, setLogForm] = useState({ outcome: '', notes: '', value: '' })
   const [logging, setLogging] = useState(false)
@@ -72,6 +73,8 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
     leadsApi.activities(leadId).then(r => setActs(r.activities || [])).catch(() => {})
   }
   useEffect(() => { if (leadId) load() }, [leadId])
+  // If opened via a "Log call" shortcut, pre-open that activity form once the lead loads.
+  useEffect(() => { if (d && initialAction && can(user, 'log')) { setTab('activity'); startLog(initialAction) } }, [d && d.id])
 
   const startLog = (type) => {
     setLogType(type)
@@ -134,6 +137,18 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
           </button>
         </div>
 
+        {d && can(user, 'log') && (
+          <div className="flex gap-1 px-6 pt-3 border-b border-slate-100">
+            {['overview', 'activity'].map(t => (
+              <button key={t} onClick={() => setTab(t)}
+                className={`px-3 py-2 text-sm font-medium capitalize border-b-2 -mb-px transition-colors
+                            ${tab === t ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
           {loading || !d ? (
             <div className="space-y-3">
@@ -141,6 +156,7 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
             </div>
           ) : (
             <>
+              {tab === 'overview' && (<>
               {/* Score summary */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-slate-100 p-4">
@@ -187,8 +203,10 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
                 )}
               </div>
 
+              </>)}
+
               {/* Activity logging */}
-              {can(user, 'log') && (
+              {tab === 'activity' && (
                 <div className="rounded-xl border border-slate-100 p-4">
                   <h3 className="text-sm font-semibold text-slate-800 mb-3">Log activity</h3>
                   <div className="grid grid-cols-4 gap-2">
@@ -265,6 +283,7 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
                 </div>
               )}
 
+              {tab === 'overview' && (<>
               {/* Profile */}
               <div className="space-y-3">
                 <h3 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Contact & company</h3>
@@ -313,7 +332,7 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
                           <p className="text-sm font-medium text-slate-800">{t.event}</p>
                           <p className="text-xs text-slate-500">{t.detail}</p>
                           <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
-                            <Clock size={9} /> {new Date(t.at).toLocaleString()}
+                            <Clock size={9} /> {fmtDateTime(t.at)}
                           </p>
                         </div>
                       </div>
@@ -321,6 +340,7 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
                   </div>
                 </div>
               )}
+              </>)}
             </>
           )}
         </div>

@@ -223,6 +223,14 @@ export default function Performance() {
         </div>
       )}
 
+      {/* Zero-activity hint */}
+      {!loading && agents.length > 0 && data?.totals &&
+        (data.totals.calls + data.totals.emails + data.totals.replies + data.totals.deals_won) === 0 && (
+        <div className="mb-6 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-500">
+          No activity logged yet — the leaderboard fills in as agents log calls, emails, replies, and deals from their leads.
+        </div>
+      )}
+
       {/* Full table */}
       <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">

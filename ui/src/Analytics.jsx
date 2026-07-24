@@ -197,6 +197,24 @@ export default function Analytics() {
   const dq = ov.data_quality
   const editable = can(user, 'edit')
 
+  // Empty state — nothing collected yet
+  if ((ov.totals?.total_leads || 0) === 0) {
+    return (
+      <motion.div {...pageAnim} className="p-8 max-w-[1400px]">
+        <h1 className="text-2xl font-semibold text-slate-900 tracking-tight mb-1">Analytics</h1>
+        <p className="text-sm text-slate-500 mb-8">Business outcomes and market coverage</p>
+        <div className="bg-white border border-slate-100 rounded-xl py-20 text-center">
+          <BarChart3 size={26} className="mx-auto text-slate-300 mb-3" />
+          <p className="text-sm font-medium text-slate-600">No leads yet</p>
+          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+            Collect leads from Apollo on the Pipeline page, or import a spreadsheet from the Leads page —
+            analytics populate automatically.
+          </p>
+        </div>
+      </motion.div>
+    )
+  }
+
   return (
     <motion.div {...pageAnim} className="p-8 max-w-[1400px]">
       {/* Header */}

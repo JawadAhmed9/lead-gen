@@ -5,6 +5,7 @@ import {
   LayoutDashboard, Users, Mail, Settings, LogOut,
   ChevronRight, X, Plus, Trash2, Shield, Check, Zap,
   BarChart3, Activity as ActivityIcon, Trophy, UserCog,
+  ChevronDown, KeyRound, Command,
 } from 'lucide-react'
 import { auth, usersApi, can } from './api'
 import Dashboard from './Dashboard'
@@ -15,7 +16,7 @@ import Analytics from './Analytics'
 import ActivityPage from './Activity'
 import Performance from './Performance'
 import Team from './Team'
-import { ToastProvider, CommandPalette } from './ui'
+import { ToastProvider, ConfirmProvider, CommandPalette, useToast, useConfirm } from './ui'
 
 // ─── Auth context ─────────────────────────────────────────────────────────────
 const Ctx = createContext(null)
@@ -113,7 +114,7 @@ function Login({ onLogin }) {
             </button>
           </form>
 
-          <div className="mt-6 pt-5 border-t border-slate-100">
+          <div className={`mt-6 pt-5 border-t border-slate-100 ${import.meta.env.DEV ? '' : 'hidden'}`}>
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
               Demo accounts
             </p>
@@ -145,6 +146,7 @@ const ROLE_STYLES = {
 
 function SettingsPanel({ onClose }) {
   const { user } = useAuth()
+  const confirm = useConfirm()
   const [members, setMembers]   = useState([])
   const [loading, setLoading]   = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -166,7 +168,7 @@ function SettingsPanel({ onClose }) {
   }
 
   const remove = async (id) => {
-    if (!confirm('Remove this team member?')) return
+    if (!(await confirm({ title: 'Remove team member?', message: 'They will lose access immediately.', confirmLabel: 'Remove', danger: true }))) return
     await usersApi.remove(id); setMembers(m => m.filter(u => u.id !== id))
   }
 
@@ -424,6 +426,95 @@ function Sidebar({ onSettings }) {
   )
 }
 
+// ─── Change-password modal ────────────────────────────────────────────────────
+function ChangePasswordModal({ onClose }) {
+  const { push } = useToast()
+  const [cur, setCur] = useState(''); const [nw, setNw] = useState(''); const [cf, setCf] = useState('')
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState('')
+  const submit = async (e) => {
+    e.preventDefault(); setErr('')
+    if (nw.length < 6) return setErr('New password must be at least 6 characters')
+    if (nw !== cf) return setErr('New passwords do not match')
+    setBusy(true)
+    try { await auth.changePassword(cur, nw); push('Password updated', 'success'); onClose() }
+    catch (e) { setErr(e.message) } finally { setBusy(false) }
+  }
+  return (
+    <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={onClose} />
+      <motion.form onSubmit={submit}
+        initial={{ opacity: 0, scale: 0.96, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }}
+        className="relative bg-white rounded-2xl border border-slate-200 shadow-panel w-full max-w-sm p-6">
+        <h3 className="text-base font-semibold text-slate-900 mb-4">Change password</h3>
+        {err && <div className="mb-3 px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-red-600 text-xs">{err}</div>}
+        {[["Current password", cur, setCur], ["New password", nw, setNw], ["Confirm new password", cf, setCf]].map(([lbl, val, set]) => (
+          <div key={lbl} className="mb-3">
+            <label className="block text-xs font-medium text-slate-600 mb-1.5">{lbl}</label>
+            <input type="password" required value={val} onChange={e => set(e.target.value)}
+              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        ))}
+        <div className="flex gap-2.5 mt-5">
+          <button type="submit" disabled={busy}
+            className="flex-1 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50">
+            {busy ? 'Saving…' : 'Update password'}
+          </button>
+          <button type="button" onClick={onClose}
+            className="px-5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
+        </div>
+      </motion.form>
+    </div>
+  )
+}
+
+// ─── Top bar ────────────────────────────────────────────────────────────────
+function TopBar() {
+  const { user, logout } = useAuth()
+  const [menu, setMenu] = useState(false)
+  const [pw, setPw] = useState(false)
+  return (
+    <header className="h-14 flex-shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-6">
+      <button onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+        className="hidden sm:flex items-center gap-2 text-xs text-slate-400 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:bg-slate-50 transition-colors">
+        <Command size={12} /> Quick search
+        <kbd className="ml-1 text-[10px] bg-slate-100 rounded px-1">⌘K</kbd>
+      </button>
+      <div className="relative ml-auto">
+        <button onClick={() => setMenu(m => !m)}
+          className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors">
+          <span className="w-8 h-8 rounded-full bg-slate-900 text-white text-xs font-semibold flex items-center justify-center">
+            {user?.name?.[0]?.toUpperCase()}
+          </span>
+          <span className="text-sm text-slate-700 hidden sm:block">{user?.name}</span>
+          <ChevronDown size={14} className="text-slate-400" />
+        </button>
+        {menu && (
+          <>
+            <div className="fixed inset-0 z-30" onClick={() => setMenu(false)} />
+            <div className="absolute right-0 mt-2 w-60 bg-white border border-slate-200 rounded-xl shadow-panel z-40 overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100">
+                <p className="text-sm font-medium text-slate-900 truncate">{user?.name}</p>
+                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                <span className="inline-block mt-1.5 text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 capitalize">{user?.role}</span>
+              </div>
+              <button onClick={() => { setMenu(false); setPw(true) }}
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
+                <KeyRound size={14} className="text-slate-400" /> Change password
+              </button>
+              <button onClick={logout}
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100">
+                <LogOut size={14} className="text-slate-400" /> Sign out
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+      <AnimatePresence>{pw && <ChangePasswordModal onClose={() => setPw(false)} />}</AnimatePresence>
+    </header>
+  )
+}
+
 // ─── Main layout ──────────────────────────────────────────────────────────────
 function Layout() {
   const { user } = useAuth()
@@ -433,7 +524,9 @@ function Layout() {
     <div className="flex h-screen overflow-hidden bg-slate-50">
       <Sidebar onSettings={() => setShowSettings(true)} />
 
-      <main className="flex-1 overflow-y-auto min-w-0">
+      <div className="flex-1 flex flex-col min-w-0">
+        <TopBar />
+        <main className="flex-1 overflow-y-auto min-w-0">
         <AnimatePresence mode="wait">
           <Routes>
             <Route path="/"            element={user?.role === 'agent' ? <Navigate to="/leads" replace /> : <Dashboard />} />
@@ -447,7 +540,8 @@ function Layout() {
             <Route path="*"            element={<Navigate to="/" replace />} />
           </Routes>
         </AnimatePresence>
-      </main>
+        </main>
+      </div>
 
       <CommandPalette />
 
@@ -489,11 +583,13 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <Ctx.Provider value={{ user, logout }}>
-        <BrowserRouter>
-          <Layout />
-        </BrowserRouter>
-      </Ctx.Provider>
+      <ConfirmProvider>
+        <Ctx.Provider value={{ user, logout }}>
+          <BrowserRouter>
+            <Layout />
+          </BrowserRouter>
+        </Ctx.Provider>
+      </ConfirmProvider>
     </ToastProvider>
   )
 }

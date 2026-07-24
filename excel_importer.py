@@ -188,19 +188,31 @@ def import_xlsx(path: str | Path) -> dict:
         }
 
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
-    ws = wb.active
 
-    headers = None
     rows = []
-    for row in ws.iter_rows(values_only=True):
-        if headers is None:
-            headers = [str(c).strip() if c else "" for c in row]
-            continue
-        row_dict = {headers[i]: (row[i] if i < len(row) else "") for i in range(len(headers))}
-        rows.append(row_dict)
+    sheets_used = []
+    # Read EVERY sheet in the workbook (not just the active one). Each sheet keeps
+    # its own header row, so sheets with different column layouts still map correctly.
+    for ws in wb.worksheets:
+        headers = None
+        sheet_rows = []
+        for row in ws.iter_rows(values_only=True):
+            if headers is None:
+                headers = [str(c).strip() if c else "" for c in row]
+                continue
+            # skip fully-blank rows
+            if not any(v not in (None, "") for v in row):
+                continue
+            row_dict = {headers[i]: (row[i] if i < len(row) else "") for i in range(len(headers))}
+            sheet_rows.append(row_dict)
+        if sheet_rows:
+            rows.extend(sheet_rows)
+            sheets_used.append(f"{ws.title} ({len(sheet_rows)} rows)")
 
     wb.close()
-    return _process_rows(rows)
+    result = _process_rows(rows)
+    result["sheets"] = sheets_used   # which sheets contributed, for visibility
+    return result
 
 
 def import_file(path: str | Path) -> dict:

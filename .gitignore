@@ -16,5 +16,8 @@ ui/dist/
 .DS_Store
 *.log
 
+# runtime rotation state (regenerated from settings on first run)
+rotation_profiles.json
+
 # NOTE: data/leads.db is intentionally tracked — it's the baseline dataset the
 # app ships with. Keep this repo PRIVATE (it contains real contact info).

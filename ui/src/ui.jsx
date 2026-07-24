@@ -19,6 +19,27 @@ export function fmtNum(n) {
   return (Number(n) || 0).toLocaleString()
 }
 
+// ─── Time — stored timestamps are UTC (no 'Z'); parse as UTC, show local ──────
+function _utc(iso) {
+  if (!iso) return null
+  const d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : iso + 'Z')
+  return isNaN(d) ? null : d
+}
+export function fmtDateTime(iso) {
+  const d = _utc(iso)
+  return d ? d.toLocaleString() : ''
+}
+export function timeAgo(iso) {
+  const d = _utc(iso)
+  if (!d) return ''
+  const s = Math.floor((Date.now() - d.getTime()) / 1000)
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  if (s < 604800) return `${Math.floor(s / 86400)}d ago`
+  return d.toLocaleDateString()
+}
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 export function Skeleton({ className = '', style }) {
   return <div className={`skeleton ${className}`} style={style} />
@@ -72,6 +93,50 @@ export function ToastProvider({ children }) {
         </AnimatePresence>
       </div>
     </ToastCtx.Provider>
+  )
+}
+
+// ─── Confirm dialog (styled replacement for window.confirm) ───────────────────
+const ConfirmCtx = createContext(null)
+export const useConfirm = () => useContext(ConfirmCtx) || (async (o) => window.confirm(typeof o === 'string' ? o : o?.message))
+
+export function ConfirmProvider({ children }) {
+  const [state, setState] = useState(null)
+  const confirm = useCallback((opts) => new Promise((resolve) => {
+    const o = typeof opts === 'string' ? { message: opts } : (opts || {})
+    setState({ title: 'Are you sure?', message: '', confirmLabel: 'Confirm', cancelLabel: 'Cancel', danger: false, ...o, resolve })
+  }), [])
+  const close = (val) => { state?.resolve(val); setState(null) }
+
+  return (
+    <ConfirmCtx.Provider value={confirm}>
+      {children}
+      <AnimatePresence>
+        {state && (
+          <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => close(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.96, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96 }} transition={{ duration: 0.16 }}
+              className="relative bg-white rounded-2xl border border-slate-200 shadow-panel w-full max-w-sm p-6">
+              <h3 className="text-base font-semibold text-slate-900">{state.title}</h3>
+              {state.message && <p className="text-sm text-slate-500 mt-1.5 leading-relaxed whitespace-pre-line">{state.message}</p>}
+              <div className="flex gap-2.5 mt-5">
+                <button onClick={() => close(true)}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium text-white transition-colors
+                              ${state.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-900 hover:bg-slate-800'}`}>
+                  {state.confirmLabel}
+                </button>
+                <button onClick={() => close(false)}
+                  className="px-5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+                  {state.cancelLabel}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </ConfirmCtx.Provider>
   )
 }
 

@@ -233,6 +233,11 @@ def create_user(name, email, password, role, manager_id=None) -> dict:
     conn.commit(); conn.close()
     return {"id": uid, "name": name, "email": email, "role": role, "manager_id": manager_id}
 
+def set_password(uid: str, new_password: str):
+    conn = get_conn()
+    conn.execute("UPDATE users SET password=? WHERE id=?", (hash_pw(new_password), uid))
+    conn.commit(); conn.close()
+
 def update_user_role(uid: str, role: str):
     if role not in ROLES:
         raise ValueError("invalid role")
