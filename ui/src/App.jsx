@@ -541,6 +541,8 @@ function Layout() {
             <Route path="/analytics"   element={<Analytics />} />
             <Route path="/leads"       element={<Leads />} />
             <Route path="/performance" element={<Performance />} />
+            <Route path="/rfqs"        element={<RfqPipeline />} />
+            <Route path="/scripts"     element={<Scripts />} />
             <Route path="/pipeline"    element={<Pipeline user={user} />} />
             <Route path="/compose"     element={<Compose />} />
             <Route path="/team"        element={<Team />} />

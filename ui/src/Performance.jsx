@@ -200,7 +200,7 @@ function TargetsEditor() {
   return (
     <div className="bg-white border border-slate-100 rounded-xl p-5 mb-6">
       <div className="flex items-center gap-2 mb-4">
-        <TargetIcon size={14} className="text-slate-400" />
+        <Target size={14} className="text-slate-400" />
         <h3 className="text-sm font-semibold text-slate-900">Daily targets</h3>
         <span className="text-[11px] text-slate-400">— per agent, drives the target-vs-actual graphs</span>
       </div>
@@ -306,9 +306,9 @@ export default function Performance() {
 
       {/* Zero-activity hint */}
       {!loading && agents.length > 0 && data?.totals &&
-        (data.totals.calls + data.totals.emails + data.totals.replies + data.totals.deals_won) === 0 && (
+        (data.totals.calls + data.totals.emails + data.totals.replies + (data.totals.rfqs || 0)) === 0 && (
         <div className="mb-6 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-500">
-          No activity logged yet — the leaderboard fills in as agents log calls, emails, replies, and deals from their leads.
+          No activity logged yet — the leaderboard fills in as agents log calls, emails, replies, and RFQs from their leads.
         </div>
       )}
 
