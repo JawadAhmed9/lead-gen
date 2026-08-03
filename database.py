@@ -16,8 +16,8 @@ from pathlib import Path
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 _USE_PG = bool(DATABASE_URL)
 
-# SQLite path (ignored when using Postgres)
-DB_PATH = Path(__file__).parent / "data" / "leads.db"
+# SQLite path (ignored when using Postgres) — shared, persistent-disk aware.
+from config import DB_PATH
 
 
 # ─── Connection helpers ───────────────────────────────────────────────────────

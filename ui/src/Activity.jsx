@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Activity as ActivityIcon, RefreshCw, LogIn, Zap, UserPlus, Trash2,
-  Upload, Play, Settings2, ShieldCheck, DollarSign, UserCog,
+  Upload, Play, Settings2, ShieldCheck, DollarSign, UserCog, Phone,
 } from 'lucide-react'
 import { activityApi } from './api'
 import { pageAnim } from './App'
@@ -11,6 +11,7 @@ import { Skeleton } from './ui'
 // map action → icon + accent
 const ACTION_META = {
   'auth.login':        { icon: LogIn,      color: '#2563EB', ring: '#EFF6FF', label: 'Signed in' },
+  'call.logged':       { icon: Phone,      color: '#0891B2', ring: '#ECFEFF', label: 'Logged a call' },
   'lead.score':        { icon: Zap,        color: '#D97706', ring: '#FFFBEB', label: 'Scored lead' },
   'lead.add':          { icon: UserPlus,   color: '#059669', ring: '#ECFDF5', label: 'Added lead' },
   'lead.delete':       { icon: Trash2,     color: '#DC2626', ring: '#FEF2F2', label: 'Deleted lead' },

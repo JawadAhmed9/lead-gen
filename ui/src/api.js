@@ -58,12 +58,52 @@ export const leadsApi = {
   logActivity: (id, data) => post(`/leads/${id}/activity`, data),
 }
 
+// ─── Call console ─────────────────────────────────────────────────────────────
+export const callApi = {
+  script: ()             => get('/call/script'),
+  log:    (leadId, data) => post(`/leads/${leadId}/call`, data),
+}
+
+// ─── Call scripts (editable, by category) ─────────────────────────────────────
+export const scriptsApi = {
+  list:   ()          => get('/call/scripts'),
+  create: (data)      => post('/call/scripts', data),
+  update: (id, data)  => put(`/call/scripts/${id}`, data),
+  remove: (id)        => del(`/call/scripts/${id}`),
+}
+
+// ─── RFQ pipeline ─────────────────────────────────────────────────────────────
+export const rfqApi = {
+  list:      ()            => get('/rfqs'),
+  create:    (data)        => post('/rfqs', data),
+  moveStage: (id, stage)   => put(`/rfqs/${id}/stage`, { stage }),
+}
+
+// ─── Tasks / follow-ups + cadences ────────────────────────────────────────────
+export const tasksApi = {
+  mine:     ()               => get('/tasks/mine'),
+  forLead:  (leadId)         => get(`/leads/${leadId}/tasks`),
+  create:   (data)           => post('/tasks', data),
+  complete: (id)             => post(`/tasks/${id}/complete`),
+}
+export const cadencesApi = {
+  list:   ()                 => get('/cadences'),
+  enroll: (leadId, cadence)  => post(`/leads/${leadId}/enroll`, { cadence }),
+}
+
 // ─── Performance / leaderboard ────────────────────────────────────────────────
 export const performanceApi = {
   leaderboard: (params = {}) => get('/performance/leaderboard?' + new URLSearchParams(params).toString()),
   agent:       (id, params = {}) => get(`/performance/agent/${id}?` + new URLSearchParams(params).toString()),
   getWeights:  ()     => get('/performance/weights'),
   saveWeights: (data) => post('/performance/weights', data),
+  daily:       (params = {}) => get('/performance/daily?' + new URLSearchParams(params).toString()),
+}
+
+// ─── Targets / goals ──────────────────────────────────────────────────────────
+export const targetsApi = {
+  list: ()     => get('/targets'),
+  save: (data) => post('/targets', data),
 }
 
 // ─── Analytics ──────────────────────────────────────────────────────────────
@@ -83,6 +123,7 @@ export const activityApi = {
 export const emailApi = {
   generate: (lead_id) => get(`/email/generate?lead_id=${lead_id}`),
   send:     (data)    => post('/email/send', data),
+  status:   ()        => get('/email/status'),
 }
 
 // ─── Pipeline ─────────────────────────────────────────────────────────────────

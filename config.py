@@ -30,6 +30,31 @@ def _load_env():
 
 _load_env()
 
+# ─── DATA DIRECTORY (persistent Render disk in production) ────────────────────
+# Locally this is <repo>/data. In production set DATA_DIR to a mounted disk path
+# (e.g. /var/data) so the SQLite database survives restarts and redeploys.
+# The image ships data/leads.db as the baseline dataset; on first boot with an
+# empty disk we copy it across once, then all writes go to persistent storage.
+import shutil as _shutil
+
+_REPO_DIR = Path(__file__).resolve().parent
+DATA_DIR  = Path(os.getenv("DATA_DIR") or (_REPO_DIR / "data"))
+DB_PATH   = DATA_DIR / "leads.db"
+_SEED_DB  = _REPO_DIR / "data" / "leads.db"   # baked into the image
+
+
+def ensure_data_dir():
+    """Create the data dir and seed leads.db once from the bundled baseline."""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        same = _SEED_DB.resolve() == DB_PATH.resolve()
+    except Exception:
+        same = False
+    if not same and not DB_PATH.exists() and _SEED_DB.exists():
+        _shutil.copy2(_SEED_DB, DB_PATH)
+        print(f"[config] seeded persistent DB at {DB_PATH} from baseline")
+
+
 # ─── ANTHROPIC / CLAUDE (Phase 2+) ──────────────────────────────────────────
 ANTHROPIC_API_KEY   = os.getenv("ANTHROPIC_API_KEY", "sk-ant-YOUR_KEY_HERE")
 CLAUDE_MODEL        = "claude-sonnet-4-6"

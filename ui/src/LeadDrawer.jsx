@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Building2, Briefcase, Mail, Phone, MapPin, Users2, Globe, Linkedin,
   Zap, Sparkles, CheckCircle2, Clock, Layers, ShieldCheck, TrendingUp,
-  MessageSquare, StickyNote, Award, DollarSign, Plus,
+  MessageSquare, StickyNote, Award, DollarSign, Plus, CalendarClock, Check,
 } from 'lucide-react'
-import { leadsApi, can } from './api'
+import { leadsApi, tasksApi, cadencesApi, can } from './api'
 import { useToast, Skeleton, fmtDateTime } from './ui'
 
 const STATUS_STYLE = {
@@ -56,7 +56,7 @@ function Row({ icon: Icon, label, value, mono }) {
   )
 }
 
-export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged, initialAction }) {
+export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged, onStartCall, initialAction }) {
   const { push } = useToast()
   const [d, setD] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -67,12 +67,37 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
   const [logForm, setLogForm] = useState({ outcome: '', notes: '', value: '' })
   const [logging, setLogging] = useState(false)
 
+  const [tasks, setTasks] = useState([])
+  const [cadences, setCadences] = useState([])
+  const [cadenceSel, setCadenceSel] = useState('')
+  const [newTask, setNewTask] = useState({ title: '', type: 'followup', due: '' })
+
+  const loadTasks = () => leadsApi && tasksApi.forLead(leadId).then(r => setTasks(r.tasks || [])).catch(() => {})
   const load = () => {
     setLoading(true)
     leadsApi.detail(leadId).then(setD).catch(() => push('Could not load lead', 'error')).finally(() => setLoading(false))
     leadsApi.activities(leadId).then(r => setActs(r.activities || [])).catch(() => {})
+    loadTasks()
   }
   useEffect(() => { if (leadId) load() }, [leadId])
+  useEffect(() => { cadencesApi.list().then(r => setCadences(r.cadences || [])).catch(() => {}) }, [])
+
+  const addTask = async () => {
+    if (!newTask.title || !newTask.due) { push('Task needs a title and date', 'error'); return }
+    try {
+      await tasksApi.create({ lead_id: leadId, title: newTask.title, type: newTask.type, due_at: newTask.due })
+      setNewTask({ title: '', type: 'followup', due: '' }); loadTasks(); onChanged?.()
+      push('Task added', 'success')
+    } catch (e) { push(e.message, 'error') }
+  }
+  const doneTask = async (id) => { setTasks(ts => ts.filter(t => t.id !== id)); await tasksApi.complete(id).catch(() => {}) }
+  const enrollCadence = async () => {
+    if (!cadenceSel) return
+    try {
+      const r = await cadencesApi.enroll(leadId, cadenceSel)
+      push(`Enrolled — ${r.tasks_created} tasks scheduled`, 'success'); setCadenceSel(''); loadTasks(); onChanged?.()
+    } catch (e) { push(e.message, 'error') }
+  }
   // If opened via a "Log call" shortcut, pre-open that activity form once the lead loads.
   useEffect(() => { if (d && initialAction && can(user, 'log')) { setTab('activity'); startLog(initialAction) } }, [d && d.id])
 
@@ -208,6 +233,13 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
               {/* Activity logging */}
               {tab === 'activity' && (
                 <div className="rounded-xl border border-slate-100 p-4">
+                  {onStartCall && (
+                    <button onClick={() => { onStartCall(d); onClose() }}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 mb-4 bg-navy-900 text-white
+                                 rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors">
+                      <Phone size={15} /> Start guided call
+                    </button>
+                  )}
                   <h3 className="text-sm font-semibold text-slate-800 mb-3">Log activity</h3>
                   <div className="grid grid-cols-4 gap-2">
                     {[['call', Phone, '#0891B2'], ['reply', MessageSquare, '#7C3AED'], ['note', StickyNote, '#64748B'], ['deal', Award, '#059669']].map(([t, Icon, c]) => (
@@ -273,11 +305,61 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
                             <Icon size={13} className="text-slate-400 flex-shrink-0" />
                             <span className="capitalize text-slate-700">{a.type}</span>
                             {a.outcome && <span className="text-slate-400">· {a.outcome}</span>}
+                            {a.type === 'call' && a.duration
+                              ? <span className="text-slate-400">· {Math.floor(a.duration / 60)}:{String(a.duration % 60).padStart(2, '0')}</span> : null}
+                            {a.rfq_count ? <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">{a.rfq_count} RFQ</span> : null}
+                            {a.interest ? <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">interest {a.interest}/10</span> : null}
                             {a.value ? <span className="text-emerald-600 font-medium">${Number(a.value).toLocaleString()}</span> : null}
                             <span className="text-slate-400 truncate flex-1 text-right">{a.agent_name || ''}</span>
                           </div>
                         )
                       })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tab === 'activity' && (
+                <div className="rounded-xl border border-slate-100 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-slate-800">Tasks &amp; cadence</h3>
+                    {can(user, 'log') && cadences.length > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <select value={cadenceSel} onChange={e => setCadenceSel(e.target.value)}
+                          className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <option value="">Enroll in cadence…</option>
+                          {cadences.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        <button onClick={enrollCadence} disabled={!cadenceSel}
+                          className="text-xs font-medium text-blue-600 hover:text-blue-700 disabled:opacity-40">Enroll</button>
+                      </div>
+                    )}
+                  </div>
+
+                  {tasks.filter(t => t.status === 'open').length === 0 && (
+                    <p className="text-xs text-slate-400 mb-3">No open tasks for this lead.</p>
+                  )}
+                  <div className="space-y-1.5 mb-3">
+                    {tasks.filter(t => t.status === 'open').map(t => (
+                      <div key={t.id} className="flex items-center gap-2 text-xs">
+                        <CalendarClock size={12} className="text-slate-400 flex-shrink-0" />
+                        <span className="text-slate-700 flex-1 truncate">{t.title}</span>
+                        <span className="text-slate-400">{t.due_at}</span>
+                        <button onClick={() => doneTask(t.id)} title="Complete"
+                          className="text-emerald-600 hover:bg-emerald-50 rounded p-0.5"><Check size={13} /></button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {can(user, 'log') && (
+                    <div className="flex gap-1.5 border-t border-slate-100 pt-3">
+                      <input value={newTask.title} onChange={e => setNewTask(n => ({ ...n, title: e.target.value }))}
+                        placeholder="New task…"
+                        className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <input type="date" value={newTask.due} onChange={e => setNewTask(n => ({ ...n, due: e.target.value }))}
+                        className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <button onClick={addTask}
+                        className="px-2.5 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-medium hover:bg-slate-800"><Plus size={13} /></button>
                     </div>
                   )}
                 </div>

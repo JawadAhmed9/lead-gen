@@ -1,15 +1,17 @@
 """
-modules/email_gen.py — Personalized Cold Email Generator
-Generates unique, context-aware cold emails per lead.
-Powered by: Claude API (Anthropic) ← no templates, every email is unique
+email_gen.py — Personalized cold-email generator.
+
+Powered by Groq (the same free key the scorer uses) so drafting works with the
+key you already have — no Anthropic/Claude key required. Falls back to a clean
+template if Groq is unavailable, so the Compose screen always returns a draft.
 """
 
 import httpx
 import json
-from config import ANTHROPIC_API_KEY, CLAUDE_MODEL, YOUR_COMPANY
+from config import GROQ_API_KEY, YOUR_COMPANY
 
-
-ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "llama-3.3-70b-versatile"
 
 EMAIL_SYSTEM_PROMPT = f"""You are a cold email copywriter for an industrial automation company.
 
@@ -17,88 +19,85 @@ COMPANY:
 {YOUR_COMPANY}
 
 RULES:
-- Email must be 3 sentences max in the body (not counting subject)
-- First sentence: reference something specific about their company/role (not generic)
-- Second sentence: connect their apparent challenge to one specific thing we do
-- Third sentence: low-pressure CTA — ask for a 15-min call or if they're the right person
-- Subject line: max 8 words, no clickbait, no "quick question", no exclamation marks
-- Tone: peer-to-peer, confident, not salesy
-- Never mention "AI-generated" or "automated"
-- Always address by first name only
-- Do NOT use: "I hope this email finds you well", "touch base", "synergy", "leverage"
+- Body: 3 sentences max (not counting greeting/sign-off).
+- First sentence: reference something specific about their company/role (not generic).
+- Second sentence: connect their likely challenge to one specific thing we do.
+- Third sentence: low-pressure CTA — ask for a 15-min call.
+- Subject: max 8 words, no clickbait, no exclamation marks.
+- Tone: peer-to-peer, confident, not salesy. Address by first name only.
+- Avoid: "I hope this email finds you well", "touch base", "synergy", "leverage".
 
-CRITICAL: Respond ONLY with valid JSON. No markdown.
-Schema:
-{{
-  "subject": "<email subject>",
-  "body": "<full email body — 3 sentences, include greeting and sign-off>"
-}}"""
+Respond ONLY with valid JSON, no markdown:
+{{"subject": "<subject>", "body": "<full body with greeting and sign-off>"}}"""
+
+
+def _template(lead: dict, score: dict) -> dict:
+    """Deterministic fallback draft — used if Groq isn't available."""
+    first = lead.get("first_name") or "there"
+    company = lead.get("company") or "your team"
+    offer = score.get("offering_match") or "industrial automation"
+    subject = f"{company} — {offer}".strip(" —")[:60]
+    body = (
+        f"Hi {first},\n\n"
+        f"I came across {company} and wanted to reach out. We help industrial and "
+        f"manufacturing teams cut downtime and gain real-time visibility with "
+        f"{offer} solutions. Would you be open to a quick 15-minute call to see if "
+        f"it's relevant for your operations?\n\n"
+        f"Best,\nThe Stemronic Team"
+    )
+    return {"subject": subject, "body": body}
 
 
 def generate_email(lead: dict, score: dict) -> dict | None:
-    """
-    Generates a personalized cold email for a scored lead.
-    Returns dict with subject + body, or None on failure.
-    """
+    """Generate a personalized cold email. Returns {subject, body}."""
+    if not GROQ_API_KEY or GROQ_API_KEY in ("", "YOUR_GROQ_KEY"):
+        return _template(lead, score)
+
     tech_stack = lead.get("tech_stack", "[]")
     if isinstance(tech_stack, str):
         try:
             tech_stack = json.loads(tech_stack)
         except Exception:
             tech_stack = []
+    relevant = [t for t in tech_stack if any(kw in str(t).lower() for kw in
+                ["sap", "scada", "plc", "mes", "erp", "oracle", "siemens",
+                 "rockwell", "ignition", "wonderware", "aveva", "opc", "historian"])]
 
-    # Filter tech stack to relevant OT/industrial tools for context
-    relevant_tech = [t for t in tech_stack if any(
-        kw in t.lower() for kw in
-        ["sap", "scada", "plc", "mes", "erp", "oracle", "siemens", "rockwell",
-         "ignition", "wonderware", "aveva", "opc", "historian"]
-    )]
-
-    lead_context = f"""
-Write a cold email for this lead:
+    lead_context = f"""Write a cold email for this lead:
 - First name: {lead.get('first_name', 'there')}
 - Title: {lead.get('title', 'Unknown role')}
 - Company: {lead.get('company', 'their company')}
 - Industry: {lead.get('industry', 'manufacturing')}
 - Company size: {lead.get('company_size', 'mid-size')} employees
-- Detected tech stack (relevant): {', '.join(relevant_tech) if relevant_tech else 'standard industrial stack'}
-- Our best offering match for them: {score.get('offering_match', 'automation')}
-- Scoring reason: {score.get('reason', '')}
-
-Sign the email from: "The [Your Name] Team" — replace [Your Name] with a placeholder.
-"""
+- Relevant tech: {', '.join(relevant) if relevant else 'standard industrial stack'}
+- Best offering match: {score.get('offering_match', 'automation')}
+Sign off as "The Stemronic Team"."""
 
     try:
         resp = httpx.post(
-            ANTHROPIC_URL,
-            headers={
-                "x-api-key":         ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type":      "application/json",
-            },
+            GROQ_URL,
+            headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
             json={
-                "model":      CLAUDE_MODEL,
-                "max_tokens": 512,
-                "system":     EMAIL_SYSTEM_PROMPT,
-                "messages":   [{"role": "user", "content": lead_context}],
+                "model": GROQ_MODEL,
+                "max_tokens": 400,
+                "temperature": 0.5,
+                "messages": [
+                    {"role": "system", "content": EMAIL_SYSTEM_PROMPT},
+                    {"role": "user", "content": lead_context},
+                ],
             },
-            timeout=30,
+            timeout=25,
         )
         resp.raise_for_status()
-        raw = resp.json()["content"][0]["text"].strip()
-
+        raw = resp.json()["choices"][0]["message"]["content"].strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
                 raw = raw[4:]
-
-        email = json.loads(raw)
-        print(f"    ✉️  Subject: {email['subject']}")
-        return email
-
-    except json.JSONDecodeError as e:
-        print(f"    ❌ Email gen JSON error: {e}")
-        return None
+        email = json.loads(raw.strip())
+        if not email.get("subject") or not email.get("body"):
+            return _template(lead, score)
+        return {"subject": email["subject"], "body": email["body"]}
     except Exception as e:
-        print(f"    ❌ Email gen error: {e}")
-        return None
+        print(f"    email gen fell back to template: {e}")
+        return _template(lead, score)

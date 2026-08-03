@@ -4,7 +4,8 @@ import {
   Trophy, Phone, Mail, MessageSquare, Award, DollarSign, Users,
   RefreshCw, Sliders, Save, X, Medal, TrendingUp, Target,
 } from 'lucide-react'
-import { performanceApi, can } from './api'
+import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { performanceApi, targetsApi, can } from './api'
 import { useAuth, pageAnim } from './App'
 import { useToast, fmtMoney, fmtNum, Skeleton } from './ui'
 
@@ -58,12 +59,12 @@ function AgentDrawer({ agentId, onClose }) {
                   <p className="text-3xl font-bold text-slate-900">{fmtNum(m.points)}</p>
                 </div>
                 <div className="rounded-xl border border-slate-100 p-4">
-                  <p className="text-[11px] uppercase tracking-wide text-slate-400">Revenue won</p>
-                  <p className="text-3xl font-bold text-emerald-600">{fmtMoney(m.revenue)}</p>
+                  <p className="text-[11px] uppercase tracking-wide text-slate-400">RFQ value</p>
+                  <p className="text-3xl font-bold text-emerald-600">{fmtMoney(m.rfq_value)}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-2 text-center">
-                {[['Calls', m.calls], ['Emails', m.emails], ['Replies', m.replies], ['Deals', m.deals_won]].map(([l, v]) => (
+              <div className="grid grid-cols-5 gap-2 text-center">
+                {[['Calls', m.calls], ['Emails', m.emails], ['Replies', m.replies], ['RFQs', m.rfqs || 0], ['Interest', m.avg_interest || '—']].map(([l, v]) => (
                   <div key={l} className="rounded-lg bg-slate-50 py-3">
                     <p className="text-lg font-bold text-slate-800">{fmtNum(v)}</p>
                     <p className="text-[10px] text-slate-500">{l}</p>
@@ -71,10 +72,13 @@ function AgentDrawer({ agentId, onClose }) {
                 ))}
               </div>
               <div className="flex items-center justify-between text-sm px-1">
+                <span className="text-slate-500">Call time</span><span className="font-semibold">{m.call_minutes || 0} min</span>
+              </div>
+              <div className="flex items-center justify-between text-sm px-1">
                 <span className="text-slate-500">Leads assigned</span><span className="font-semibold">{m.leads_assigned}</span>
               </div>
               <div className="flex items-center justify-between text-sm px-1">
-                <span className="text-slate-500">Win conversion</span><span className="font-semibold">{m.conversion}%</span>
+                <span className="text-slate-500">RFQ rate (per call)</span><span className="font-semibold">{m.conversion}%</span>
               </div>
               <div>
                 <h3 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Recent activity</h3>
@@ -110,7 +114,7 @@ function WeightsEditor({ weights, onSaved }) {
   const [saving, setSaving] = useState(false)
   useEffect(() => setW(weights), [weights])
   const fields = [
-    ['deal_won', 'Deal won'], ['revenue_per_1k', 'Per $1k revenue'],
+    ['rfq', 'RFQ secured'], ['rfq_value_per_1k', 'Per $1k RFQ value'],
     ['reply', 'Reply'], ['call', 'Call'], ['email', 'Email'],
   ]
   const save = async () => {
@@ -132,7 +136,7 @@ function WeightsEditor({ weights, onSaved }) {
           <Save size={12} /> {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         {fields.map(([k, label]) => (
           <div key={k}>
             <label className="block text-[11px] text-slate-500 mb-1">{label}</label>
@@ -140,6 +144,81 @@ function WeightsEditor({ weights, onSaved }) {
               onChange={e => setW(s => ({ ...s, [k]: Number(e.target.value) }))}
               className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm tabular-nums
                          focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// team target-vs-actual (7 days)
+function TeamDailyChart() {
+  const [series, setSeries] = useState(null)
+  useEffect(() => { performanceApi.daily({ days: 7 }).then(r => setSeries(r.series)).catch(() => setSeries([])) }, [])
+  if (!series) return <Skeleton className="h-48 rounded-xl mb-6" />
+  const one = (title, actual, target, color) => (
+    <div className="bg-white border border-slate-100 rounded-xl p-5">
+      <h3 className="text-sm font-semibold text-slate-900 mb-3">{title}</h3>
+      <ResponsiveContainer width="100%" height={160}>
+        <ComposedChart data={series}>
+          <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94A3B8' }} />
+          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94A3B8' }} width={26} allowDecimals={false} />
+          <Tooltip cursor={{ fill: '#F8FAFC' }} />
+          <Bar dataKey={actual} name="actual" radius={[4, 4, 0, 0]} maxBarSize={30}>
+            {series.map((d, i) => <Cell key={i} fill={d[actual] >= d[target] ? color : '#CBD5E1'} />)}
+          </Bar>
+          <Line dataKey={target} name="target" stroke="#0F172A" strokeWidth={2} strokeDasharray="4 3" dot={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  )
+  return (
+    <div className="grid grid-cols-2 gap-5 mb-6">
+      {one('Team calls — 7 days vs target', 'calls', 'target_calls', '#0891B2')}
+      {one('Team RFQs — 7 days vs target', 'rfqs', 'target_rfqs', '#059669')}
+    </div>
+  )
+}
+
+// manager: set each agent's daily targets
+function TargetsEditor() {
+  const { push } = useToast()
+  const [rows, setRows] = useState(null)
+  const [saving, setSaving] = useState('')
+  useEffect(() => { targetsApi.list().then(r => setRows(r.targets)).catch(() => setRows([])) }, [])
+  const update = (id, field, val) =>
+    setRows(rs => rs.map(r => r.id === id ? { ...r, targets: { ...r.targets, [field]: val } } : r))
+  const save = async (r) => {
+    setSaving(r.id)
+    try {
+      await targetsApi.save({ agent_id: r.id, daily_calls: Number(r.targets.daily_calls) || 0,
+        daily_rfqs: Number(r.targets.daily_rfqs) || 0, daily_revenue: r.targets.daily_revenue || 0 })
+      push(`Targets saved for ${r.name}`, 'success')
+    } catch (e) { push(e.message, 'error') } finally { setSaving('') }
+  }
+  if (!rows) return null
+  return (
+    <div className="bg-white border border-slate-100 rounded-xl p-5 mb-6">
+      <div className="flex items-center gap-2 mb-4">
+        <TargetIcon size={14} className="text-slate-400" />
+        <h3 className="text-sm font-semibold text-slate-900">Daily targets</h3>
+        <span className="text-[11px] text-slate-400">— per agent, drives the target-vs-actual graphs</span>
+      </div>
+      {rows.length === 0 && <p className="text-xs text-slate-400">No agents yet.</p>}
+      <div className="space-y-2">
+        {rows.map(r => (
+          <div key={r.id} className="flex items-center gap-3">
+            <span className="flex-1 text-sm text-slate-700">{r.name}</span>
+            <label className="text-[11px] text-slate-400">Calls</label>
+            <input type="number" value={r.targets.daily_calls} onChange={e => update(r.id, 'daily_calls', e.target.value)}
+              className="w-16 px-2 py-1 border border-slate-200 rounded-lg text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label className="text-[11px] text-slate-400">RFQs</label>
+            <input type="number" value={r.targets.daily_rfqs} onChange={e => update(r.id, 'daily_rfqs', e.target.value)}
+              className="w-14 px-2 py-1 border border-slate-200 rounded-lg text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <button onClick={() => save(r)} disabled={saving === r.id}
+              className="px-3 py-1 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50">
+              {saving === r.id ? '…' : 'Save'}
+            </button>
           </div>
         ))}
       </div>
@@ -191,6 +270,8 @@ export default function Performance() {
         </div>
       </div>
 
+      <TeamDailyChart />
+      {can(user, 'manage') && <TargetsEditor />}
       {can(user, 'manage') && data?.weights && <WeightsEditor weights={data.weights} onSaved={() => load()} />}
 
       {/* Podium */}
@@ -215,8 +296,8 @@ export default function Performance() {
               </div>
               <p className="text-3xl font-bold text-slate-900 tabular-nums">{fmtNum(a.points)}<span className="text-sm font-medium text-slate-400 ml-1">pts</span></p>
               <div className="flex gap-3 mt-2 text-xs text-slate-500">
-                <StatCell icon={Award} value={a.deals_won} color="#059669" />
-                <StatCell icon={DollarSign} value={fmtMoney(a.revenue)} color="#059669" />
+                <StatCell icon={Award} value={`${a.rfqs || 0} RFQ`} color="#0891B2" />
+                <StatCell icon={DollarSign} value={fmtMoney(a.rfq_value)} color="#059669" />
               </div>
             </motion.div>
           ))}
@@ -243,10 +324,11 @@ export default function Performance() {
                 <th className="px-4 py-3 text-center">Calls</th>
                 <th className="px-4 py-3 text-center">Emails</th>
                 <th className="px-4 py-3 text-center">Replies</th>
-                <th className="px-4 py-3 text-center">Deals</th>
-                <th className="px-4 py-3 text-right">Revenue</th>
+                <th className="px-4 py-3 text-center">RFQs</th>
+                <th className="px-4 py-3 text-right">RFQ value</th>
+                <th className="px-4 py-3 text-center">Interest</th>
                 <th className="px-4 py-3 text-center">Assigned</th>
-                <th className="px-4 py-3 text-right">Conv.</th>
+                <th className="px-4 py-3 text-right">RFQ rate</th>
               </tr>
             </thead>
             <tbody>
@@ -276,9 +358,14 @@ export default function Performance() {
                   <td className="px-4 py-3 text-center text-slate-600 tabular-nums">{a.replies}</td>
                   <td className="px-4 py-3 text-center">
                     <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-semibold"
-                      style={{ background: a.deals_won ? '#ECFDF5' : '#F8FAFC', color: a.deals_won ? '#059669' : '#94A3B8' }}>{a.deals_won}</span>
+                      style={{ background: a.rfqs ? '#ECFEFF' : '#F8FAFC', color: a.rfqs ? '#0891B2' : '#94A3B8' }}>{a.rfqs || 0}</span>
                   </td>
-                  <td className="px-4 py-3 text-right text-emerald-600 font-medium tabular-nums">{a.revenue ? fmtMoney(a.revenue) : '—'}</td>
+                  <td className="px-4 py-3 text-right text-slate-700 font-medium tabular-nums">{a.rfq_value ? fmtMoney(a.rfq_value) : '—'}</td>
+                  <td className="px-4 py-3 text-center tabular-nums">
+                    {a.avg_interest
+                      ? <span className="font-semibold" style={{ color: a.avg_interest >= 8 ? '#059669' : a.avg_interest >= 5 ? '#D97706' : '#DC2626' }}>{a.avg_interest}</span>
+                      : <span className="text-slate-300">—</span>}
+                  </td>
                   <td className="px-4 py-3 text-center text-slate-500 tabular-nums">{a.leads_assigned}</td>
                   <td className="px-4 py-3 text-right text-slate-600 tabular-nums">{a.conversion}%</td>
                 </tr>

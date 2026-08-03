@@ -10,6 +10,7 @@ import { leadsApi, usersApi, can } from './api'
 import { useAuth, pageAnim } from './App'
 import { useNavigate, useLocation } from 'react-router-dom'
 import LeadDrawer from './LeadDrawer'
+import CallConsole from './CallConsole'
 import { useToast, useConfirm } from './ui'
 
 const SEG_KEY = 'lp_segments'
@@ -455,6 +456,8 @@ export default function Leads() {
   }, [user])
 
   const openDrawer = (id, action = null) => { setDrawerAction(action); setDrawerId(id) }
+  const [callLead, setCallLead] = useState(null)
+  const startCall = (lead) => { setDrawerId(null); setDrawerAction(null); setCallLead(lead) }
 
   // Inline per-row assign / reassign / unassign
   const assignOne = async (id, agentId) => {
@@ -896,8 +899,8 @@ export default function Leads() {
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {can(user, 'log') && (
                             <button
-                              onClick={() => openDrawer(lead.id, 'call')}
-                              title="Log a call"
+                              onClick={() => startCall(lead)}
+                              title="Start guided call"
                               className="p-1.5 hover:bg-cyan-50 hover:text-cyan-600 rounded-lg
                                          transition-colors text-slate-400">
                               <Phone size={14} />
@@ -1030,7 +1033,11 @@ export default function Leads() {
           <LeadDrawer leadId={drawerId} user={user} initialAction={drawerAction}
             onClose={() => { setDrawerId(null); setDrawerAction(null) }}
             onChanged={fetch}
+            onStartCall={startCall}
             onCompose={(lead) => { setDrawerId(null); navigate('/compose', { state: { lead } }) }} />
+        )}
+        {callLead && (
+          <CallConsole lead={callLead} onClose={() => setCallLead(null)} onLogged={fetch} />
         )}
         {showImport && <ImportModal onClose={() => setShowImport(false)} onDone={fetch} />}
         {showAdd    && <AddModal    onClose={() => setShowAdd(false)}    onDone={fetch} />}

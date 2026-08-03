@@ -19,5 +19,13 @@ ui/dist/
 # runtime rotation state (regenerated from settings on first run)
 rotation_profiles.json
 
+# sqlite WAL sidecar files (runtime only — never commit)
+data/*.db-wal
+data/*.db-shm
+
+# stray local test scripts
+_w3_test.py
+_*_test.py
+
 # NOTE: data/leads.db is intentionally tracked — it's the baseline dataset the
 # app ships with. Keep this repo PRIVATE (it contains real contact info).

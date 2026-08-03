@@ -12,4 +12,8 @@ ui/dist                  # rebuilt fresh in the Docker UI stage
 *.log
 .DS_Store
 # NOTE: data/leads.db is intentionally NOT ignored — it ships as the baseline
-# dataset so testers always start from your real ~913 leads + seeded users.
+# dataset so testers always start from your real leads + seeded users.
+# But never ship the runtime WAL sidecar files:
+data/*.db-wal
+data/*.db-shm
+_w3_test.py

@@ -18,7 +18,7 @@ import sqlite3, uuid, hashlib, secrets, json, os
 from datetime import datetime
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "data" / "leads.db"
+from config import DB_PATH   # persistent-disk aware path (env DATA_DIR in prod)
 EVAL_SETTINGS_FILE = Path(__file__).parent / "eval_settings.json"
 
 ROLES = ("admin", "manager", "agent", "viewer")
@@ -46,10 +46,10 @@ SEED_USERS = [
 # real, workable leads to test with immediately (0 disables auto-assignment).
 LEADS_PER_AGENT_ON_SEED = 25
 
-# Default point weights — editable in-app by managers/admins.
+# Default point weights — RFQ is the primary outcome we measure on.
 DEFAULT_WEIGHTS = {
-    "deal_won":     100,   # points per deal marked won
-    "revenue_per_1k": 1,   # extra points per $1,000 of won-deal value
+    "rfq":           40,   # points per RFQ secured (the outcome that matters)
+    "rfq_value_per_1k": 1, # extra points per $1,000 of RFQ value
     "reply":         15,   # points per reply logged
     "call":           5,   # points per call logged
     "email":          3,   # points per email sent/logged
@@ -58,12 +58,163 @@ DEFAULT_WEIGHTS = {
 
 ACTIVITY_TYPES = ("call", "email", "reply", "note", "deal")
 
+# Default guided call talk-track (editable later). Shown live in the Call Console.
+CALL_SCRIPT = [
+    {"phase": "Opening", "seconds": 30, "color": "#2563EB", "points": [
+        "Introduce yourself and Stemronic in one line.",
+        "Confirm you're speaking with the right person (name / role).",
+        "State the reason for the call in a sentence — no pitch yet.",
+        "Ask permission: \"Do you have two minutes?\"",
+    ]},
+    {"phase": "Discovery", "seconds": 120, "color": "#7C3AED", "points": [
+        "Ask about their current setup: automation, PLC/SCADA, manual processes.",
+        "Probe pain: downtime, quality issues, lack of real-time visibility.",
+        "Qualify: any upcoming projects, budget, timeline, who decides?",
+        "Listen more than you talk — take notes below.",
+    ]},
+    {"phase": "Value & Close", "seconds": 90, "color": "#059669", "points": [
+        "Connect one specific pain to one Stemronic solution.",
+        "Propose a clear next step: send info, book a demo, or request an RFQ.",
+        "Ask directly: \"Can we prepare an RFQ / quote for you?\"",
+        "Confirm follow-up date and best contact method before hanging up.",
+    ]},
+]
+
+def get_call_script():
+    return CALL_SCRIPT
+
+# Category-specific starter scripts (seeded once; fully editable by admins)
+MANUFACTURING_SCRIPT = [
+    {"phase": "Opening", "seconds": 30, "color": "#2563EB", "points": [
+        "Intro: Stemronic — automation for factories & plants.",
+        "Confirm plant/ops role.", "Reason: help reduce downtime & manual work.", "Ask for two minutes."]},
+    {"phase": "Discovery", "seconds": 120, "color": "#7C3AED", "points": [
+        "Which lines/processes are still manual?", "Any recurring downtime or quality issues?",
+        "Current PLC/SCADA/MES setup?", "Planned expansions or upgrades this year?"]},
+    {"phase": "Value & Close", "seconds": 90, "color": "#059669", "points": [
+        "Tie a specific pain to our PLC/SCADA + IoT offering.",
+        "Offer a plant walkthrough or an RFQ for a pilot line.", "Ask directly: can we quote you?", "Set follow-up."]},
+]
+OILGAS_SCRIPT = [
+    {"phase": "Opening", "seconds": 30, "color": "#2563EB", "points": [
+        "Intro: Stemronic — industrial automation & safety for energy.",
+        "Confirm role (ops / engineering / procurement).", "Reason for call, one line.", "Permission to continue."]},
+    {"phase": "Discovery", "seconds": 120, "color": "#7C3AED", "points": [
+        "Assets/sites in scope (upstream/midstream/downstream)?", "Compliance, monitoring, or reliability pain?",
+        "Existing SCADA / historian / instrumentation?", "Budget cycle and decision process?"]},
+    {"phase": "Value & Close", "seconds": 90, "color": "#059669", "points": [
+        "Connect pain to remote monitoring / predictive maintenance.",
+        "Propose a scoped RFQ or technical review.", "Ask for the RFQ.", "Confirm next step + contact."]},
+]
+
+def _seed_scripts(conn):
+    if conn.execute("SELECT COUNT(*) FROM call_scripts").fetchone()[0] > 0:
+        return
+    now = datetime.utcnow().isoformat()
+    seed = [("General outreach", "General", CALL_SCRIPT, 1),
+            ("Manufacturing / Factories", "Manufacturing", MANUFACTURING_SCRIPT, 0),
+            ("Oil & Gas / Energy", "Oil & Gas", OILGAS_SCRIPT, 0)]
+    for name, cat, steps, dflt in seed:
+        conn.execute("INSERT INTO call_scripts (id,name,category,steps,is_default,created_by,updated_at) VALUES (?,?,?,?,?,?,?)",
+                     (str(uuid.uuid4()), name, cat, json.dumps(steps), dflt, "system", now))
+    conn.commit()
+
+def _script_row(r):
+    d = dict(r)
+    try:
+        d["steps"] = json.loads(d["steps"]) if d.get("steps") else []
+    except Exception:
+        d["steps"] = []
+    return d
+
+def list_scripts() -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute("SELECT * FROM call_scripts ORDER BY is_default DESC, category, name").fetchall()
+    conn.close()
+    return [_script_row(r) for r in rows]
+
+def get_script(sid: str) -> dict | None:
+    conn = get_conn()
+    r = conn.execute("SELECT * FROM call_scripts WHERE id=?", (sid,)).fetchone()
+    conn.close()
+    return _script_row(r) if r else None
+
+def create_script(name, category, steps, created_by) -> dict:
+    sid = str(uuid.uuid4())
+    conn = get_conn()
+    conn.execute("INSERT INTO call_scripts (id,name,category,steps,is_default,created_by,updated_at) VALUES (?,?,?,?,0,?,?)",
+                 (sid, name, category, json.dumps(steps), created_by, datetime.utcnow().isoformat()))
+    conn.commit(); conn.close()
+    return get_script(sid)
+
+def update_script(sid, name, category, steps) -> dict:
+    conn = get_conn()
+    conn.execute("UPDATE call_scripts SET name=?, category=?, steps=?, updated_at=? WHERE id=?",
+                 (name, category, json.dumps(steps), datetime.utcnow().isoformat(), sid))
+    conn.commit(); conn.close()
+    return get_script(sid)
+
+def delete_script(sid) -> bool:
+    conn = get_conn()
+    conn.execute("DELETE FROM call_scripts WHERE id=?", (sid,))
+    conn.commit(); conn.close()
+    return True
+
+# ─── RFQ opportunities / pipeline ─────────────────────────────────────────────
+RFQ_STAGES = ["new", "quoted", "won", "lost"]
+RFQ_STAGE_WEIGHT = {"new": 0.3, "quoted": 0.6, "won": 1.0, "lost": 0.0}
+
+def create_rfq(lead_id, agent_id, title, value=0, count=1, notes="") -> dict:
+    rid = str(uuid.uuid4()); now = datetime.utcnow().isoformat()
+    conn = get_conn()
+    conn.execute("INSERT INTO rfqs (id,lead_id,agent_id,title,value,count,stage,notes,created_at,updated_at) "
+                 "VALUES (?,?,?,?,?,?,'new',?,?,?)",
+                 (rid, lead_id, agent_id, title, float(value or 0), int(count or 1), notes, now, now))
+    conn.commit(); conn.close()
+    return {"id": rid}
+
+def update_rfq_stage(rid, stage) -> bool:
+    if stage not in RFQ_STAGES:
+        return False
+    conn = get_conn()
+    conn.execute("UPDATE rfqs SET stage=?, updated_at=? WHERE id=?", (stage, datetime.utcnow().isoformat(), rid))
+    conn.commit(); conn.close()
+    return True
+
+def list_rfqs(scope_user: dict) -> dict:
+    ids = _agent_ids_for(scope_user)
+    conn = get_conn()
+    if ids:
+        ph = ",".join("?" * len(ids))
+        rows = conn.execute(f"""
+            SELECT q.*, r.company AS company, u.name AS agent_name
+            FROM rfqs q LEFT JOIN raw_leads r ON r.id=q.lead_id
+            LEFT JOIN users u ON u.id=q.agent_id
+            WHERE q.agent_id IN ({ph}) ORDER BY q.updated_at DESC
+        """, ids).fetchall()
+    else:
+        rows = []
+    conn.close()
+    items = [dict(r) for r in rows]
+    by_stage = {s: [x for x in items if x["stage"] == s] for s in RFQ_STAGES}
+    forecast = sum((x["value"] or 0) * RFQ_STAGE_WEIGHT.get(x["stage"], 0) for x in items)
+    won_value = sum((x["value"] or 0) for x in items if x["stage"] == "won")
+    open_value = sum((x["value"] or 0) for x in items if x["stage"] in ("new", "quoted"))
+    return {"stages": RFQ_STAGES, "by_stage": by_stage, "count": len(items),
+            "forecast": round(forecast), "won_value": round(won_value), "open_value": round(open_value)}
+
 
 # ─── Connection ───────────────────────────────────────────────────────────────
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    # timeout: wait (don't instantly fail) if another agent holds a write lock.
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
+    # WAL lets readers and a writer work concurrently — needed once a whole
+    # sales team is logging calls/RFQs at the same time.
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
+    conn.execute("PRAGMA synchronous=NORMAL")
     return conn
 
 
@@ -116,7 +267,69 @@ def ensure_tables():
             cur.execute(f"ALTER TABLE raw_leads ADD COLUMN {col} {decl}")
         except Exception:
             pass
+    # Call/RFQ columns on lead_activities (guarded)
+    for col, decl in [("rfq_count", "INTEGER DEFAULT 0"), ("rfq_value", "REAL"),
+                      ("meta", "TEXT"), ("interest", "INTEGER")]:
+        try:
+            cur.execute(f"ALTER TABLE lead_activities ADD COLUMN {col} {decl}")
+        except Exception:
+            pass
+    # Per-agent daily targets
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS agent_targets (
+            agent_id      TEXT PRIMARY KEY,
+            daily_calls   INTEGER DEFAULT 20,
+            daily_rfqs    INTEGER DEFAULT 2,
+            daily_revenue REAL    DEFAULT 0,
+            updated_at    TEXT
+        )
+    """)
+    # Tasks / follow-ups
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id          TEXT PRIMARY KEY,
+            lead_id     TEXT,
+            agent_id    TEXT,
+            title       TEXT,
+            type        TEXT,        -- call | email | followup | todo
+            due_at      TEXT,        -- YYYY-MM-DD
+            status      TEXT DEFAULT 'open',   -- open | done
+            sequence    TEXT,        -- cadence name if created by a cadence
+            created_by  TEXT,
+            created_at  TEXT,
+            done_at     TEXT
+        )
+    """)
+    # Editable call scripts (by client category)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS call_scripts (
+            id          TEXT PRIMARY KEY,
+            name        TEXT,
+            category    TEXT,
+            steps       TEXT,        -- JSON list of phases
+            is_default  INTEGER DEFAULT 0,
+            created_by  TEXT,
+            updated_at  TEXT
+        )
+    """)
+    # RFQ opportunities (pipeline)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS rfqs (
+            id          TEXT PRIMARY KEY,
+            lead_id     TEXT,
+            agent_id    TEXT,
+            title       TEXT,
+            value       REAL,
+            count       INTEGER DEFAULT 1,
+            stage       TEXT DEFAULT 'new',    -- new | quoted | won | lost
+            close_date  TEXT,
+            notes       TEXT,
+            created_at  TEXT,
+            updated_at  TEXT
+        )
+    """)
     conn.commit()
+    _seed_scripts(conn)
 
     _seed_users(conn)
     _autodistribute_leads(conn)
@@ -124,21 +337,36 @@ def ensure_tables():
 
 
 def _seed_users(conn):
-    """Recreate the SEED_USERS roster if the users table is empty. Runs on every
-    startup, so seeded accounts survive filesystem resets."""
-    if conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] > 0:
-        return
-    email_to_id = {u["email"]: f"u_{i+1}" for i, u in enumerate(SEED_USERS)}
+    """Ensure every SEED_USERS account exists (idempotent per-user). Runs on
+    every startup, so seeded accounts survive filesystem resets AND newly added
+    roster members appear even on a database that already has other users."""
+    rows = conn.execute("SELECT id, email FROM users").fetchall()
+    id_by_email = {r[1]: r[0] for r in rows}
+    taken_ids = {r[0] for r in rows}
     now = datetime.utcnow().isoformat()
-    for u in SEED_USERS:
-        mgr_id = email_to_id.get(u.get("manager")) if u.get("manager") else None
+
+    # Pass 1: allocate ids for any missing roster members (so manager links resolve).
+    to_add = []
+    for i, u in enumerate(SEED_USERS):
+        if u["email"] in id_by_email:
+            continue
+        uid = f"u_{i+1}"
+        if uid in taken_ids:
+            uid = "u_" + uuid.uuid4().hex[:8]
+        taken_ids.add(uid)
+        id_by_email[u["email"]] = uid
+        to_add.append((uid, u))
+
+    # Pass 2: insert them, resolving manager email -> id.
+    for uid, u in to_add:
+        mgr_id = id_by_email.get(u.get("manager")) if u.get("manager") else None
         conn.execute(
             "INSERT INTO users (id,name,email,password,role,manager_id,created_at) VALUES (?,?,?,?,?,?,?)",
-            (email_to_id[u["email"]], u["name"], u["email"], hash_pw(u["password"]),
-             u["role"], mgr_id, now),
+            (uid, u["name"], u["email"], hash_pw(u["password"]), u["role"], mgr_id, now),
         )
-    conn.commit()
-    print(f"[sales] seeded {len(SEED_USERS)} users")
+    if to_add:
+        conn.commit()
+        print(f"[sales] seeded {len(to_add)} missing users: {', '.join(u['email'] for _, u in to_add)}")
 
 
 def _autodistribute_leads(conn):
@@ -292,19 +520,40 @@ def bulk_assign(lead_ids: list[str], agent_id: str, by_user: dict) -> int:
 
 # ─── Activities ───────────────────────────────────────────────────────────────
 
-def add_activity(lead_id, agent_id, type_, outcome="", notes="", duration=None, value=None) -> dict:
+def add_activity(lead_id, agent_id, type_, outcome="", notes="", duration=None, value=None,
+                 rfq_count=0, rfq_value=None, meta=None, interest=None) -> dict:
     if type_ not in ACTIVITY_TYPES:
         raise ValueError("invalid activity type")
     aid = str(uuid.uuid4()); now = datetime.utcnow().isoformat()
+    meta_json = json.dumps(meta) if isinstance(meta, (dict, list)) else (meta or None)
     conn = get_conn()
     conn.execute(
-        "INSERT INTO lead_activities (id,lead_id,agent_id,type,outcome,notes,duration,value,created_at) "
-        "VALUES (?,?,?,?,?,?,?,?,?)",
-        (aid, lead_id, agent_id, type_, outcome, notes, duration, value, now),
+        "INSERT INTO lead_activities (id,lead_id,agent_id,type,outcome,notes,duration,value,rfq_count,rfq_value,meta,interest,created_at) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (aid, lead_id, agent_id, type_, outcome, notes, duration, value,
+         int(rfq_count or 0), rfq_value, meta_json, interest, now),
     )
     conn.commit(); conn.close()
     return {"id": aid, "lead_id": lead_id, "agent_id": agent_id, "type": type_,
-            "outcome": outcome, "notes": notes, "duration": duration, "value": value, "created_at": now}
+            "outcome": outcome, "notes": notes, "duration": duration, "value": value,
+            "rfq_count": int(rfq_count or 0), "rfq_value": rfq_value, "interest": interest, "created_at": now}
+
+def audit(user: dict, action: str, detail: str = ""):
+    """Write a row to the admin activity_log (used by the Activity page).
+    Self-contained so the sales layer can log without importing api_server."""
+    try:
+        conn = get_conn()
+        conn.execute("""CREATE TABLE IF NOT EXISTS activity_log (
+            id TEXT PRIMARY KEY, ts TEXT, actor_name TEXT, actor_email TEXT,
+            actor_role TEXT, action TEXT, detail TEXT)""")
+        conn.execute(
+            "INSERT INTO activity_log (id,ts,actor_name,actor_email,actor_role,action,detail) VALUES (?,?,?,?,?,?,?)",
+            (str(uuid.uuid4()), datetime.utcnow().isoformat(), (user or {}).get("name", ""),
+             (user or {}).get("email", ""), (user or {}).get("role", ""), action, detail))
+        conn.commit(); conn.close()
+    except Exception:
+        pass
+
 
 def list_lead_activities(lead_id: str) -> list[dict]:
     conn = get_conn()
@@ -337,6 +586,163 @@ def save_weights(new: dict) -> dict:
     return w
 
 
+# ─── Targets / goals ──────────────────────────────────────────────────────────
+
+DEFAULT_TARGETS = {"daily_calls": 20, "daily_rfqs": 2, "daily_revenue": 0}
+
+def get_targets(agent_id: str) -> dict:
+    conn = get_conn()
+    r = conn.execute("SELECT daily_calls, daily_rfqs, daily_revenue FROM agent_targets WHERE agent_id=?",
+                     (agent_id,)).fetchone()
+    conn.close()
+    if r:
+        return {"daily_calls": r[0], "daily_rfqs": r[1], "daily_revenue": r[2]}
+    return dict(DEFAULT_TARGETS)
+
+def set_targets(agent_id: str, daily_calls, daily_rfqs, daily_revenue) -> dict:
+    conn = get_conn()
+    conn.execute("""
+        INSERT INTO agent_targets (agent_id, daily_calls, daily_rfqs, daily_revenue, updated_at)
+        VALUES (?,?,?,?,?)
+        ON CONFLICT(agent_id) DO UPDATE SET
+            daily_calls=excluded.daily_calls, daily_rfqs=excluded.daily_rfqs,
+            daily_revenue=excluded.daily_revenue, updated_at=excluded.updated_at
+    """, (agent_id, int(daily_calls or 0), int(daily_rfqs or 0), float(daily_revenue or 0),
+          datetime.utcnow().isoformat()))
+    conn.commit(); conn.close()
+    return get_targets(agent_id)
+
+TASK_TYPES = ("call", "email", "followup", "todo")
+
+# Multi-step cadences — enrolling a lead generates one dated task per step.
+CADENCES = {
+    "standard": {
+        "name": "Standard outreach (9 days)",
+        "steps": [
+            {"day": 0, "type": "call",  "title": "Intro call"},
+            {"day": 2, "type": "email", "title": "Follow-up email"},
+            {"day": 5, "type": "call",  "title": "Check-in call"},
+            {"day": 9, "type": "email", "title": "Final follow-up email"},
+        ],
+    },
+    "fast": {
+        "name": "Fast close (4 days)",
+        "steps": [
+            {"day": 0, "type": "call",  "title": "Qualify call"},
+            {"day": 1, "type": "email", "title": "Send proposal / RFQ ask"},
+            {"day": 4, "type": "call",  "title": "Close call"},
+        ],
+    },
+    "nurture": {
+        "name": "Long nurture (30 days)",
+        "steps": [
+            {"day": 0,  "type": "call",  "title": "Intro call"},
+            {"day": 7,  "type": "email", "title": "Value email"},
+            {"day": 14, "type": "call",  "title": "Check-in call"},
+            {"day": 30, "type": "email", "title": "Re-engage email"},
+        ],
+    },
+}
+
+def lead_owner(lead_id: str) -> str | None:
+    conn = get_conn()
+    r = conn.execute("SELECT assigned_to FROM raw_leads WHERE id=?", (lead_id,)).fetchone()
+    conn.close()
+    return (r[0] if r and r[0] else None)
+
+def list_cadences() -> list[dict]:
+    return [{"id": k, "name": v["name"], "steps": len(v["steps"])} for k, v in CADENCES.items()]
+
+def create_task(lead_id, agent_id, title, type_, due_at, created_by, sequence=None) -> dict:
+    tid = str(uuid.uuid4()); now = datetime.utcnow().isoformat()
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO tasks (id,lead_id,agent_id,title,type,due_at,status,sequence,created_by,created_at) "
+        "VALUES (?,?,?,?,?,?,'open',?,?,?)",
+        (tid, lead_id, agent_id, title, type_ if type_ in TASK_TYPES else "todo", due_at, sequence, created_by, now))
+    conn.commit(); conn.close()
+    return {"id": tid, "lead_id": lead_id, "agent_id": agent_id, "title": title,
+            "type": type_, "due_at": due_at, "status": "open", "sequence": sequence}
+
+def complete_task(task_id, agent_id=None) -> bool:
+    conn = get_conn()
+    conn.execute("UPDATE tasks SET status='done', done_at=? WHERE id=?",
+                 (datetime.utcnow().isoformat(), task_id))
+    conn.commit(); conn.close()
+    return True
+
+def list_lead_tasks(lead_id: str) -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute("""SELECT t.*, u.name AS agent_name FROM tasks t
+        LEFT JOIN users u ON u.id=t.agent_id
+        WHERE t.lead_id=? ORDER BY (t.status='done'), t.due_at""", (lead_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def my_tasks(agent_id: str, include_done_days: int = 0) -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT t.*, r.company AS company, r.first_name, r.last_name, r.phone,
+               r.assigned_to, e.email AS email
+        FROM tasks t
+        LEFT JOIN raw_leads r ON r.id=t.lead_id
+        LEFT JOIN enriched_leads e ON e.lead_id=t.lead_id
+        WHERE t.agent_id=? AND t.status='open'
+        ORDER BY t.due_at
+    """, (agent_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def task_counts(agent_id: str) -> dict:
+    from datetime import date
+    today = date.today().isoformat()
+    conn = get_conn()
+    op = conn.execute("SELECT COUNT(*) FROM tasks WHERE agent_id=? AND status='open'", (agent_id,)).fetchone()[0]
+    od = conn.execute("SELECT COUNT(*) FROM tasks WHERE agent_id=? AND status='open' AND due_at < ?",
+                      (agent_id, today)).fetchone()[0]
+    tod = conn.execute("SELECT COUNT(*) FROM tasks WHERE agent_id=? AND status='open' AND due_at = ?",
+                       (agent_id, today)).fetchone()[0]
+    conn.close()
+    return {"open": op, "overdue": od, "today": tod}
+
+def enroll_cadence(lead_id, agent_id, cadence_id, created_by) -> int:
+    from datetime import date, timedelta
+    cad = CADENCES.get(cadence_id)
+    if not cad:
+        return 0
+    for step in cad["steps"]:
+        due = (date.today() + timedelta(days=step["day"])).isoformat()
+        create_task(lead_id, agent_id, step["title"], step["type"], due, created_by, sequence=cad["name"])
+    return len(cad["steps"])
+
+
+def daily_series(agent_ids, days: int = 7) -> list[dict]:
+    """Last N days of actual calls + RFQs vs the summed daily target for the given agents."""
+    from datetime import date, timedelta
+    if isinstance(agent_ids, str):
+        agent_ids = [agent_ids]
+    tgt_calls = sum(get_targets(a)["daily_calls"] for a in agent_ids)
+    tgt_rfqs = sum(get_targets(a)["daily_rfqs"] for a in agent_ids)
+    out = []
+    conn = get_conn()
+    ph = ",".join("?" * len(agent_ids))
+    for i in range(days - 1, -1, -1):
+        d = (date.today() - timedelta(days=i)).isoformat()
+        calls = rfqs = 0
+        if agent_ids:
+            row = conn.execute(
+                f"""SELECT SUM(CASE WHEN type='call' THEN 1 ELSE 0 END),
+                           COALESCE(SUM(CASE WHEN type='call' THEN rfq_count ELSE 0 END),0)
+                    FROM lead_activities
+                    WHERE agent_id IN ({ph}) AND substr(created_at,1,10)=?""",
+                (*agent_ids, d)).fetchone()
+            calls = int(row[0] or 0); rfqs = int(row[1] or 0)
+        out.append({"date": d[5:], "calls": calls, "rfqs": rfqs,
+                    "target_calls": tgt_calls, "target_rfqs": tgt_rfqs})
+    conn.close()
+    return out
+
+
 # ─── Performance / leaderboard ────────────────────────────────────────────────
 
 def _date_clause(frm, to):
@@ -360,17 +766,29 @@ def _agent_metrics(conn, agent_id, frm, to) -> dict:
         f"SELECT COALESCE(SUM(value),0) FROM lead_activities WHERE agent_id=? AND type='deal' AND outcome='won'{dc}",
         (agent_id, *dp)).fetchone()
     revenue = float(rev_row[0] or 0)
+    rfq_row = conn.execute(
+        f"SELECT COALESCE(SUM(rfq_count),0), COALESCE(SUM(rfq_value),0), COALESCE(SUM(duration),0) "
+        f"FROM lead_activities WHERE agent_id=? AND type='call'{dc}", (agent_id, *dp)).fetchone()
+    rfqs = int(rfq_row[0] or 0)
+    rfq_value = float(rfq_row[1] or 0)
+    call_seconds = int(rfq_row[2] or 0)
+    ai_row = conn.execute(
+        f"SELECT AVG(interest) FROM lead_activities WHERE agent_id=? AND type='call' AND interest IS NOT NULL AND interest>0{dc}",
+        (agent_id, *dp)).fetchone()
+    avg_interest = round(float(ai_row[0]), 1) if ai_row and ai_row[0] is not None else 0
     assigned = conn.execute("SELECT COUNT(*) FROM raw_leads WHERE assigned_to=?", (agent_id,)).fetchone()[0]
     return {"calls": calls, "emails": emails, "replies": replies,
-            "deals_won": won, "deals_lost": lost, "revenue": revenue, "leads_assigned": assigned}
+            "deals_won": won, "deals_lost": lost, "revenue": revenue,
+            "rfqs": rfqs, "rfq_value": rfq_value, "avg_interest": avg_interest,
+            "call_minutes": round(call_seconds / 60), "leads_assigned": assigned}
 
 def _points(m: dict, w: dict) -> int:
     return round(
-        m["deals_won"] * w["deal_won"]
-        + (m["revenue"] / 1000.0) * w["revenue_per_1k"]
-        + m["replies"] * w["reply"]
-        + m["calls"] * w["call"]
-        + m["emails"] * w["email"]
+        m.get("rfqs", 0) * w.get("rfq", 0)
+        + (m.get("rfq_value", 0) / 1000.0) * w.get("rfq_value_per_1k", 0)
+        + m["replies"] * w.get("reply", 0)
+        + m["calls"] * w.get("call", 0)
+        + m["emails"] * w.get("email", 0)
     )
 
 def leaderboard(scope_user: dict, frm: str = "", to: str = "") -> dict:
@@ -381,7 +799,7 @@ def leaderboard(scope_user: dict, frm: str = "", to: str = "") -> dict:
     for a in agents:
         m = _agent_metrics(conn, a["id"], frm, to)
         m["points"] = _points(m, w)
-        m["conversion"] = round(100.0 * m["deals_won"] / m["leads_assigned"], 1) if m["leads_assigned"] else 0.0
+        m["conversion"] = round(100.0 * m["rfqs"] / m["calls"], 1) if m["calls"] else 0.0  # RFQ rate = RFQs per call
         rows.append({**a, **m})
     conn.close()
     rows.sort(key=lambda r: (r["points"], r["revenue"]), reverse=True)
@@ -392,6 +810,7 @@ def leaderboard(scope_user: dict, frm: str = "", to: str = "") -> dict:
                 "calls": sum(r["calls"] for r in rows),
                 "emails": sum(r["emails"] for r in rows),
                 "replies": sum(r["replies"] for r in rows),
+                "rfqs": sum(r.get("rfqs", 0) for r in rows),
                 "deals_won": sum(r["deals_won"] for r in rows),
                 "revenue": sum(r["revenue"] for r in rows),
             }}

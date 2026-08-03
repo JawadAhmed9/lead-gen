@@ -117,6 +117,9 @@ export default function Compose() {
   const [sending, setSending]     = useState(false)
   const [sent, setSent]           = useState(false)
   const [error, setError]         = useState('')
+  const [emailStatus, setEmailStatus] = useState(null)
+
+  useEffect(() => { emailApi.status().then(setEmailStatus).catch(() => {}) }, [])
 
   const canSend = can(user, 'send')
 
@@ -144,7 +147,7 @@ export default function Compose() {
       setSubject(draft.subject || '')
       setBody(draft.body || '')
     } catch (err) {
-      setError('Claude unavailable — compose manually or try again.')
+      setError('Draft generation failed — compose manually or try again.')
     } finally {
       setGenerating(false)
     }
@@ -174,6 +177,18 @@ export default function Compose() {
         <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Compose</h1>
         <p className="text-sm text-slate-500 mt-1">Send personalized emails with AI-generated drafts</p>
       </div>
+
+      {emailStatus && (
+        <div className={`mb-5 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs border max-w-[1100px]
+                        ${emailStatus.configured
+                          ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                          : 'bg-amber-50 border-amber-100 text-amber-700'}`}>
+          <span className={`w-2 h-2 rounded-full ${emailStatus.configured ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+          {emailStatus.configured
+            ? <span>Email sending is <b>live</b> — sending as <b>{emailStatus.sender}</b> via Brevo.</span>
+            : <span>Email sending is <b>not configured</b>. Drafting works; add your Brevo API key &amp; sender to enable delivery. You can still draft and save.</span>}
+        </div>
+      )}
 
       <div className="grid grid-cols-5 gap-6 max-w-[1100px]">
         {/* Left: editor */}

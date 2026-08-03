@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, Mail, Settings, LogOut,
   ChevronRight, X, Plus, Trash2, Shield, Check, Zap,
   BarChart3, Activity as ActivityIcon, Trophy, UserCog,
-  ChevronDown, KeyRound, Command,
+  ChevronDown, KeyRound, Command, CalendarClock, FileText, FileCheck,
 } from 'lucide-react'
 import { auth, usersApi, can } from './api'
 import Dashboard from './Dashboard'
@@ -15,6 +15,10 @@ import Pipeline from './Pipeline'
 import Analytics from './Analytics'
 import ActivityPage from './Activity'
 import Performance from './Performance'
+import AgentDashboard from './AgentDashboard'
+import MyDay from './MyDay'
+import Scripts from './Scripts'
+import RfqPipeline from './RfqPipeline'
 import Team from './Team'
 import { ToastProvider, ConfirmProvider, CommandPalette, useToast, useConfirm } from './ui'
 
@@ -347,13 +351,16 @@ function SettingsPanel({ onClose }) {
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 // roles controls which nav items each role sees
 const NAV = [
-  { to: '/',           label: 'Dashboard',   icon: LayoutDashboard, roles: ['admin', 'manager', 'viewer'] },
+  { to: '/',           label: 'Dashboard',   icon: LayoutDashboard, roles: ['admin', 'manager', 'agent', 'viewer'] },
+  { to: '/myday',      label: 'My Day',      icon: CalendarClock,   roles: ['admin', 'manager', 'agent'] },
   { to: '/analytics',  label: 'Analytics',   icon: BarChart3,       roles: ['admin', 'manager', 'viewer'] },
   { to: '/leads',      label: 'Leads',       icon: Users,           roles: ['admin', 'manager', 'agent', 'viewer'] },
   { to: '/performance',label: 'Leaderboard', icon: Trophy,          roles: ['admin', 'manager', 'agent', 'viewer'] },
+  { to: '/rfqs',       label: 'RFQ Pipeline',icon: FileCheck,       roles: ['admin', 'manager', 'agent'] },
   { to: '/pipeline',   label: 'Pipeline',    icon: Zap,             roles: ['admin', 'manager'] },
   { to: '/compose',    label: 'Compose',     icon: Mail,            roles: ['admin', 'manager', 'agent'] },
   { to: '/team',       label: 'Team',        icon: UserCog,         roles: ['admin', 'manager'] },
+  { to: '/scripts',    label: 'Scripts',     icon: FileText,        roles: ['admin', 'manager'] },
   { to: '/activity',   label: 'Activity',    icon: ActivityIcon,    roles: ['admin', 'manager'] },
 ]
 
@@ -529,7 +536,8 @@ function Layout() {
         <main className="flex-1 overflow-y-auto min-w-0">
         <AnimatePresence mode="wait">
           <Routes>
-            <Route path="/"            element={user?.role === 'agent' ? <Navigate to="/leads" replace /> : <Dashboard />} />
+            <Route path="/"            element={user?.role === 'agent' ? <AgentDashboard /> : <Dashboard />} />
+            <Route path="/myday"       element={<MyDay />} />
             <Route path="/analytics"   element={<Analytics />} />
             <Route path="/leads"       element={<Leads />} />
             <Route path="/performance" element={<Performance />} />

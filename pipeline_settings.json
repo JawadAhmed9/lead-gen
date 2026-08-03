@@ -11,12 +11,7 @@
     "Control Systems Engineer"
   ],
   "person_locations": [
-    "Saudi Arabia",
-    "United Arab Emirates",
-    "Qatar",
-    "Kuwait",
-    "Bahrain",
-    "Oman"
+    "United Arab Emirates"
   ],
   "organization_num_employees_ranges": [
     "51,200",
@@ -25,5 +20,28 @@
     "5001,10000"
   ],
   "pages": 10,
+  "rotation_enabled": true,
+  "industries": [
+    "manufacturing",
+    "industrial automation",
+    "oil and gas",
+    "chemicals",
+    "machinery",
+    "mining",
+    "plastics",
+    "packaging",
+    "food processing",
+    "automotive"
+  ],
+  "seniorities": [
+    "owner",
+    "c_suite",
+    "vp",
+    "director",
+    "manager"
+  ],
+  "per_page": 100,
+  "reveal_contacts": true,
+  "contact_email_status": [],
   "page_offset": 16
 }

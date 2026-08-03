@@ -32,7 +32,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DB_PATH = Path("data/leads.db")
+import config
+from config import DB_PATH   # persistent-disk aware path (env DATA_DIR in prod)
+
+# Ensure the persistent data dir exists and is seeded from the baseline DB on
+# first boot (empty Render disk), BEFORE any table creation touches it.
+config.ensure_data_dir()
 
 # Create sales-layer tables (users, lead_activities, assignment columns) + seed users.
 sales.ensure_tables()
@@ -41,8 +46,11 @@ app.include_router(sales_api.router)
 
 
 def db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
+    conn.execute("PRAGMA synchronous=NORMAL")
     return conn
 
 
@@ -421,6 +429,11 @@ def gen_email(lead_id: str, user=Depends(current_user)):
     except Exception as e:
         raise HTTPException(500, str(e))
 
+
+@app.get("/api/email/status")
+def email_status(user=Depends(current_user)):
+    ready = sales.brevo_ready()
+    return {"configured": ready, "sender": os.getenv("BREVO_SENDER_EMAIL", "") if ready else ""}
 
 class SendEmailReq(BaseModel):
     lead_id: str
