@@ -144,7 +144,7 @@ export default function CallConsole({ lead, onClose, onLogged }) {
                 <div className="flex items-center gap-2 px-5 py-2.5 border-b border-slate-100 bg-slate-50/50">
                   <span className="text-[11px] text-slate-400 uppercase tracking-wide">Script</span>
                   <select value={scriptId} onChange={e => pickScript(e.target.value)}
-                    className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                     {scripts.map(s => <option key={s.id} value={s.id}>{s.category} — {s.name}</option>)}
                   </select>
                   <span className="text-[11px] text-slate-400">choose by client type</span>
@@ -190,7 +190,7 @@ export default function CallConsole({ lead, onClose, onLogged }) {
                   <textarea value={liveNotes} onChange={e => setLiveNotes(e.target.value)}
                     placeholder="Jot down what they say as you go…"
                     className="w-full h-44 px-3 py-2.5 border border-slate-200 rounded-xl text-sm resize-none
-                               focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                               focus:outline-none focus:ring-2 focus:ring-brand-500" />
                 </div>
               </div>
 
@@ -215,7 +215,7 @@ export default function CallConsole({ lead, onClose, onLogged }) {
                   {DISPOSITIONS.map(d => (
                     <button key={d} onClick={() => setOutcome(d)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors
-                                  ${outcome === d ? 'bg-slate-900 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                  ${outcome === d ? 'bg-brand-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                       {d}
                     </button>
                   ))}
@@ -283,7 +283,7 @@ export default function CallConsole({ lead, onClose, onLogged }) {
                 <label className="block text-xs font-semibold text-slate-600 mb-2">Call summary</label>
                 <textarea value={wrapNotes} onChange={e => setWrapNotes(e.target.value)} rows={3}
                   placeholder="How did it go? Next steps, objections, who to follow up with…"
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500" />
                 {liveNotes && <p className="text-[11px] text-slate-400 mt-1.5">Your live notes are saved with this call too.</p>}
               </div>
 
@@ -293,7 +293,7 @@ export default function CallConsole({ lead, onClose, onLogged }) {
                   {[[0, 'None'], [1, 'Tomorrow'], [2, 'In 2 days'], [3, 'In 3 days'], [7, 'In a week']].map(([d, l]) => (
                     <button key={d} onClick={() => setFollowUp(d)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                                  ${followUp === d ? 'bg-slate-900 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                                  ${followUp === d ? 'bg-brand-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                       {l}
                     </button>
                   ))}
@@ -303,7 +303,7 @@ export default function CallConsole({ lead, onClose, onLogged }) {
 
               <div className="flex gap-2.5">
                 <button onClick={save} disabled={saving}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl transition-colors disabled:opacity-50">
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50">
                   {saving ? 'Saving…' : <><Check size={16} /> Save call</>}
                 </button>
                 <button onClick={() => setPhase('live')} className="px-5 py-3 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50">Back</button>

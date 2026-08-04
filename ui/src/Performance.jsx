@@ -40,7 +40,7 @@ function AgentDrawer({ agentId, onClose }) {
         className="absolute right-0 top-0 bottom-0 w-[440px] bg-white shadow-panel flex flex-col">
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-slate-900 text-white flex items-center justify-center font-semibold">
+            <div className="w-11 h-11 rounded-full bg-brand-600 text-white flex items-center justify-center font-semibold">
               {data?.agent?.name?.[0]?.toUpperCase() || '?'}
             </div>
             <div>
@@ -143,7 +143,7 @@ function WeightsEditor({ weights, onSaved }) {
             <input type="number" value={w[k] ?? 0}
               onChange={e => setW(s => ({ ...s, [k]: Number(e.target.value) }))}
               className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm tabular-nums
-                         focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                         focus:outline-none focus:ring-2 focus:ring-brand-500" />
           </div>
         ))}
       </div>
@@ -211,10 +211,10 @@ function TargetsEditor() {
             <span className="flex-1 text-sm text-slate-700">{r.name}</span>
             <label className="text-[11px] text-slate-400">Calls</label>
             <input type="number" value={r.targets.daily_calls} onChange={e => update(r.id, 'daily_calls', e.target.value)}
-              className="w-16 px-2 py-1 border border-slate-200 rounded-lg text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-16 px-2 py-1 border border-slate-200 rounded-lg text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-500" />
             <label className="text-[11px] text-slate-400">RFQs</label>
             <input type="number" value={r.targets.daily_rfqs} onChange={e => update(r.id, 'daily_rfqs', e.target.value)}
-              className="w-14 px-2 py-1 border border-slate-200 rounded-lg text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-14 px-2 py-1 border border-slate-200 rounded-lg text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-500" />
             <button onClick={() => save(r)} disabled={saving === r.id}
               className="px-3 py-1 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50">
               {saving === r.id ? '…' : 'Save'}
@@ -259,7 +259,7 @@ export default function Performance() {
           <div className="flex rounded-lg border border-slate-200 overflow-hidden">
             {[['all', 'All time'], ['30', '30d'], ['7', '7d']].map(([v, l]) => (
               <button key={v} onClick={() => setRange(v)}
-                className={`px-3 py-2 text-xs font-medium transition-colors ${range === v ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+                className={`px-3 py-2 text-xs font-medium transition-colors ${range === v ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
                 {l}
               </button>
             ))}
@@ -348,7 +348,7 @@ export default function Performance() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-slate-900 text-white text-xs flex items-center justify-center font-semibold">{a.name[0]?.toUpperCase()}</div>
+                      <div className="w-7 h-7 rounded-full bg-brand-600 text-white text-xs flex items-center justify-center font-semibold">{a.name[0]?.toUpperCase()}</div>
                       <span className="font-medium text-slate-800">{a.name}</span>
                     </div>
                   </td>

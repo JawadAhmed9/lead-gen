@@ -38,7 +38,7 @@ function LeadCard({ lead }) {
     <div className="p-5">
       {/* Avatar + name */}
       <div className="flex items-center gap-3 mb-5">
-        <div className="w-11 h-11 rounded-full bg-slate-900 flex items-center justify-center
+        <div className="w-11 h-11 rounded-full bg-brand-600 flex items-center justify-center
                         text-white font-semibold text-base flex-shrink-0">
           {initial}
         </div>
@@ -203,7 +203,7 @@ export default function Compose() {
             {lead ? (
               <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200
                               rounded-xl">
-                <div className="w-9 h-9 rounded-full bg-slate-900 flex items-center justify-center
+                <div className="w-9 h-9 rounded-full bg-brand-600 flex items-center justify-center
                                 text-white text-sm font-semibold flex-shrink-0">
                   {(lead.first_name?.[0] || lead.company?.[0] || '?').toUpperCase()}
                 </div>
@@ -225,7 +225,7 @@ export default function Compose() {
                   onFocus={() => results.length && setShow(true)}
                   placeholder="Search leads by name, company, or email..."
                   className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500 transition
+                             focus:outline-none focus:ring-2 focus:ring-brand-500 transition
                              placeholder:text-slate-400"
                 />
                 <AnimatePresence>
@@ -290,7 +290,7 @@ export default function Compose() {
                   placeholder="e.g. Solving downtime at Acme — 15 min?"
                   disabled={!canSend || !lead}
                   className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500 transition
+                             focus:outline-none focus:ring-2 focus:ring-brand-500 transition
                              placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400"
                 />
               </div>
@@ -301,7 +301,7 @@ export default function Compose() {
                   placeholder="Write your email or click Generate with AI..."
                   disabled={!canSend || !lead}
                   className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm
-                             focus:outline-none focus:ring-2 focus:ring-blue-500 transition
+                             focus:outline-none focus:ring-2 focus:ring-brand-500 transition
                              placeholder:text-slate-400 resize-none disabled:bg-slate-50
                              disabled:text-slate-400 leading-relaxed"
                 />
@@ -328,7 +328,7 @@ export default function Compose() {
                             text-sm font-medium transition-all
                             ${sent
                               ? 'bg-emerald-500 text-white'
-                              : 'bg-slate-900 hover:bg-slate-800 text-white disabled:opacity-40 disabled:cursor-not-allowed'}`}
+                              : 'bg-brand-600 hover:bg-brand-700 text-white disabled:opacity-40 disabled:cursor-not-allowed'}`}
               >
                 {sent ? (
                   <><CheckCircle size={15} /> Sent successfully</>

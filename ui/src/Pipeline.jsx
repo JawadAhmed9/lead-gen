@@ -49,7 +49,7 @@ function TagInput({ label, values, onChange, placeholder }) {
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), add())}
           placeholder={placeholder}
-          className="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
         <button onClick={add}
           className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-medium transition-colors">
@@ -177,7 +177,7 @@ export default function Pipeline({ user }) {
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm
                           ${running
                             ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                            : 'bg-slate-900 hover:bg-slate-700 text-white'}`}>
+                            : 'bg-brand-600 hover:bg-brand-700 text-white'}`}>
               {running
                 ? <><RefreshCw size={14} className="animate-spin" /> Running…</>
                 : <><Play size={14} /> Collect Leads</>}
@@ -195,7 +195,7 @@ export default function Pipeline({ user }) {
                   onClick={() => setSettings(s => ({ ...s, pages: n }))}
                   className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors
                               ${settings.pages === n
-                                ? 'bg-slate-900 text-white'
+                                ? 'bg-brand-600 text-white'
                                 : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                   {n} <span className="text-[10px] opacity-70">({n * 25} leads)</span>
                 </button>
@@ -394,7 +394,7 @@ export default function Pipeline({ user }) {
                 {canCollect && (
                   <div className="flex items-center gap-3 pt-2">
                     <button onClick={saveSettings} disabled={saving}
-                      className="px-5 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
+                      className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50">
                       {saving ? 'Saving…' : 'Save Filters'}
                     </button>
                     <AnimatePresence>

@@ -27,5 +27,8 @@ data/*.db-shm
 _w3_test.py
 _*_test.py
 
+# local UI preview (not part of the app)
+login_preview.html
+
 # NOTE: data/leads.db is intentionally tracked — it's the baseline dataset the
 # app ships with. Keep this repo PRIVATE (it contains real contact info).

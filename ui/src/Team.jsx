@@ -61,7 +61,7 @@ export default function Team() {
           </p>
         </div>
         <button onClick={() => setShowForm(v => !v)}
-          className="flex items-center gap-2 px-3.5 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800">
+          className="flex items-center gap-2 px-3.5 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700">
           <UserPlus size={14} /> Add {isAdmin ? 'member' : 'agent'}
         </button>
       </div>
@@ -73,16 +73,16 @@ export default function Team() {
             <div className="p-5 bg-white border border-slate-200 rounded-xl grid grid-cols-2 gap-3">
               <input required placeholder="Full name" value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
               <input required type="email" placeholder="Email" value={form.email}
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
               <input required type="password" placeholder="Temp password" value={form.password}
                 onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
               {isAdmin ? (
                 <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                   <option value="agent">Agent</option>
                   <option value="manager">Manager</option>
                   <option value="viewer">Viewer</option>
@@ -93,7 +93,7 @@ export default function Team() {
               )}
               <div className="col-span-2 flex gap-2">
                 <button type="submit" disabled={saving}
-                  className="flex-1 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                  className="flex-1 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50">
                   {saving ? 'Adding…' : 'Add to team'}
                 </button>
                 <button type="button" onClick={() => setShowForm(false)}
@@ -116,7 +116,7 @@ export default function Team() {
             {agents.length === 0 && <p className="text-sm text-slate-400 px-1">No agents yet — add one above.</p>}
             {agents.map(m => (
               <div key={m.id} className="flex items-center gap-3 px-4 py-3 bg-white border border-slate-100 rounded-xl">
-                <div className="w-9 h-9 rounded-full bg-slate-900 text-white text-sm flex items-center justify-center font-semibold">{m.name[0]?.toUpperCase()}</div>
+                <div className="w-9 h-9 rounded-full bg-brand-600 text-white text-sm flex items-center justify-center font-semibold">{m.name[0]?.toUpperCase()}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-900 truncate">{m.name}</p>
                   <p className="text-xs text-slate-500 truncate flex items-center gap-1"><Mail size={10} /> {m.email}</p>
@@ -143,7 +143,7 @@ export default function Team() {
                     </div>
                     {isAdmin && m.id !== user.id ? (
                       <select value={m.role} onChange={e => changeRole(m, e.target.value)}
-                        className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white capitalize focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white capitalize focus:outline-none focus:ring-2 focus:ring-brand-500">
                         {['admin', 'manager', 'agent', 'viewer'].map(r => <option key={r} value={r}>{r}</option>)}
                       </select>
                     ) : (

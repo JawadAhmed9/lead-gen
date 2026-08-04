@@ -229,7 +229,7 @@ export default function Analytics() {
             <RefreshCw size={14} /> Refresh
           </button>
           <button onClick={() => { if (!exportReport(ov, seg, econ)) push('Allow pop-ups to export the report', 'error') }}
-            className="flex items-center gap-2 px-3.5 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+            className="flex items-center gap-2 px-3.5 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors">
             <FileDown size={14} /> Export report
           </button>
         </div>

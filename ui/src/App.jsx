@@ -6,8 +6,10 @@ import {
   ChevronRight, X, Plus, Trash2, Shield, Check, Zap,
   BarChart3, Activity as ActivityIcon, Trophy, UserCog,
   ChevronDown, KeyRound, Command, CalendarClock, FileText, FileCheck,
+  Cpu, Factory, ShieldCheck, TrendingUp, Infinity as InfinityIcon, Mail as MailIcon, Phone, Globe,
 } from 'lucide-react'
 import { auth, usersApi, can } from './api'
+import { Logo, Wordmark } from './Logo'
 import Dashboard from './Dashboard'
 import Leads from './Leads'
 import Compose from './Compose'
@@ -42,7 +44,7 @@ function Input({ label, error, ...props }) {
       <input
         {...props}
         className={`w-full px-3.5 py-2.5 border rounded-lg text-sm bg-white
-          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition
+          focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition
           placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400
           ${error ? 'border-red-300' : 'border-slate-200'}`}
       />
@@ -52,9 +54,69 @@ function Input({ label, error, ...props }) {
 }
 
 // ─── Login ────────────────────────────────────────────────────────────────────
+const CAPABILITIES = [
+  { icon: Cpu,         label: 'Artificial Intelligence' },
+  { icon: Factory,     label: 'Industrial Automation' },
+  { icon: BarChart3,   label: 'Smart Analytics' },
+  { icon: ShieldCheck, label: 'Secure & Reliable' },
+  { icon: TrendingUp,  label: 'Data-Driven Decisions' },
+  { icon: InfinityIcon,label: 'Continuous Innovation' },
+]
+
+function BrandPanel() {
+  return (
+    <div className="hidden lg:flex relative w-[56%] flex-col justify-between overflow-hidden bg-navy-950 text-white">
+      {/* glowing hexagon hero as atmospheric background */}
+      <div className="absolute inset-x-0 top-0 h-[62%] bg-cover bg-center opacity-80"
+           style={{ backgroundImage: "url('/brand/hero-glow.jpg')" }} />
+      {/* gradients: blend image into navy + darken bottom for legibility */}
+      <div className="absolute inset-0"
+           style={{ background: 'radial-gradient(120% 80% at 50% 12%, rgba(43,132,255,.18), transparent 55%), linear-gradient(180deg, rgba(6,11,24,.15) 0%, rgba(6,11,24,.55) 46%, #060B18 78%)' }} />
+      {/* subtle blue edge glow */}
+      <div className="absolute -right-1 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-brand-500/40 to-transparent" />
+
+      {/* top: clean lockup */}
+      <div className="relative z-10 p-10">
+        <Wordmark size={30} subtitle dark />
+      </div>
+
+      {/* center: headline */}
+      <div className="relative z-10 px-10 -mt-6">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-medium text-brand-200 mb-5 backdrop-blur-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" /> AI-Powered Lead Generation
+        </div>
+        <h1 className="text-[2.6rem] leading-[1.08] font-bold tracking-tight max-w-md">
+          Powering <span className="text-brand-400">Intelligent</span> Industries
+        </h1>
+        <p className="mt-4 text-slate-300 text-[15px] leading-relaxed max-w-md">
+          AI-driven solutions for automation, optimization, and growth — turning the GCC industrial market into your pipeline.
+        </p>
+
+        {/* capability pills */}
+        <div className="mt-8 grid grid-cols-2 gap-2.5 max-w-lg">
+          {CAPABILITIES.map(({ icon: Icon, label }) => (
+            <div key={label}
+                 className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[.06] border border-white/10 backdrop-blur-sm">
+              <Icon size={16} className="text-brand-400 shrink-0" />
+              <span className="text-[13px] font-medium text-slate-200">{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* footer: contact */}
+      <div className="relative z-10 p-10 flex items-center gap-6 text-[13px] text-slate-400 border-t border-white/10 mt-8">
+        <span className="flex items-center gap-1.5"><MailIcon size={13} className="text-brand-400" /> info@stemronic.com</span>
+        <span className="flex items-center gap-1.5"><Globe size={13} className="text-brand-400" /> stemronic.com</span>
+        <span className="flex items-center gap-1.5"><Phone size={13} className="text-brand-400" /> +92 123 456 7890</span>
+      </div>
+    </div>
+  )
+}
+
 function Login({ onLogin }) {
-  const [email, setEmail]       = useState('admin@company.com')
-  const [password, setPassword] = useState('admin123')
+  const [email, setEmail]       = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
   const [busy, setBusy]         = useState(false)
 
@@ -72,31 +134,28 @@ function Login({ onLogin }) {
     }
   }
 
-  const demos = [
-    ['admin@company.com',   'admin123',   'Admin'],
-    ['manager@company.com', 'manager123', 'Manager'],
-    ['agent@company.com',   'agent123',   'Agent'],
-    ['viewer@company.com',  'viewer123',  'Viewer'],
-  ]
-
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="w-full max-w-[400px]"
-      >
-        {/* Wordmark */}
-        <div className="flex items-center gap-2.5 justify-center mb-8">
-          <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center">
-            <div className="w-4 h-4 border-[2.5px] border-white rounded-[3px]" />
-          </div>
-          <span className="text-slate-900 font-semibold text-lg tracking-tight">Lead Pipeline</span>
-        </div>
+    <div className="min-h-screen flex bg-white">
+      <BrandPanel />
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-8">
-          <h1 className="text-xl font-semibold text-slate-900 mb-1">Welcome back</h1>
-          <p className="text-sm text-slate-500 mb-6">Sign in to your workspace</p>
+      {/* right: sign-in */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="w-full max-w-[380px]"
+        >
+          {/* mark + heading */}
+          <div className="flex items-center gap-2.5 mb-8 lg:mb-9">
+            <Logo size={40} />
+            <div className="leading-none lg:hidden">
+              <div className="font-bold tracking-tight text-navy-900 text-lg">Stemronic <span className="text-brand-500">AI</span></div>
+              <div className="uppercase tracking-[0.18em] text-[9px] text-slate-400 mt-1">Lead Gen Platform</div>
+            </div>
+          </div>
+
+          <h1 className="text-2xl font-bold text-navy-900 tracking-tight mb-1">Sign in to Stemronic AI</h1>
+          <p className="text-sm text-slate-500 mb-7">Welcome back — access your lead-gen workspace.</p>
 
           {error && (
             <div className="mb-5 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">
@@ -106,37 +165,24 @@ function Login({ onLogin }) {
 
           <form onSubmit={submit} className="space-y-4">
             <Input label="Email" type="email" value={email}
-              onChange={e => setEmail(e.target.value)} required autoFocus />
+              onChange={e => setEmail(e.target.value)} required autoFocus placeholder="you@stemronic.com" />
             <Input label="Password" type="password" value={password}
-              onChange={e => setPassword(e.target.value)} required />
+              onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
             <button
               type="submit" disabled={busy}
-              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-medium
-                         rounded-lg text-sm transition-colors disabled:opacity-50 mt-2"
+              className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold
+                         rounded-lg text-sm transition-colors disabled:opacity-50 mt-2 shadow-sm
+                         shadow-brand-600/20"
             >
-              {busy ? 'Signing in...' : 'Sign in'}
+              {busy ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
 
-          <div className={`mt-6 pt-5 border-t border-slate-100 ${import.meta.env.DEV ? '' : 'hidden'}`}>
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
-              Demo accounts
-            </p>
-            <div className="space-y-1">
-              {demos.map(([e, p, role]) => (
-                <button key={e}
-                  onClick={() => { setEmail(e); setPassword(p) }}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg
-                             text-sm hover:bg-slate-50 transition-colors group"
-                >
-                  <span className="text-slate-600 group-hover:text-slate-900 transition-colors">{e}</span>
-                  <span className="text-xs text-slate-400 font-medium">{role}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </motion.div>
+          <p className="mt-8 text-center text-xs text-slate-400">
+            © {new Date().getFullYear()} Stemronic AI · Intelligent Solutions, Industrial Impact
+          </p>
+        </motion.div>
+      </div>
     </div>
   )
 }
@@ -212,8 +258,8 @@ function SettingsPanel({ onClose }) {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-slate-700">Team members</h3>
               <button onClick={() => setShowForm(v => !v)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white
-                           text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors">
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-white
+                           text-xs font-medium rounded-lg hover:bg-brand-700 transition-colors">
                 <Plus size={13} /> Invite
               </button>
             </div>
@@ -239,7 +285,7 @@ function SettingsPanel({ onClose }) {
                         <label className="block text-xs font-medium text-slate-600 mb-1.5">Role</label>
                         <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
                           className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm
-                                     focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                     focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white">
                           <option value="viewer">Viewer — read only</option>
                           <option value="manager">Manager — edit + send</option>
                           <option value="admin">Admin — full access</option>
@@ -248,8 +294,8 @@ function SettingsPanel({ onClose }) {
                     </div>
                     <div className="flex gap-2 pt-1">
                       <button type="submit" disabled={saving}
-                        className="flex-1 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg
-                                   hover:bg-slate-800 transition-colors disabled:opacity-50">
+                        className="flex-1 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg
+                                   hover:bg-brand-700 transition-colors disabled:opacity-50">
                         {saving ? 'Sending...' : 'Send invite'}
                       </button>
                       <button type="button" onClick={() => setShowForm(false)}
@@ -273,7 +319,7 @@ function SettingsPanel({ onClose }) {
                   <div key={m.id}
                     className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-slate-100
                                rounded-xl transition-colors">
-                    <div className="w-9 h-9 rounded-full bg-slate-900 flex items-center justify-center
+                    <div className="w-9 h-9 rounded-full bg-brand-600 flex items-center justify-center
                                     text-white text-sm font-semibold flex-shrink-0">
                       {m.name[0].toUpperCase()}
                     </div>
@@ -285,7 +331,7 @@ function SettingsPanel({ onClose }) {
                       <>
                         <select value={m.role} onChange={e => changeRole(m.id, e.target.value)}
                           className="text-xs border border-slate-200 rounded-lg px-2 py-1.5
-                                     focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white capitalize">
+                                     focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white capitalize">
                           {['admin','manager','viewer'].map(r => (
                             <option key={r} value={r}>{r}</option>
                           ))}
@@ -373,10 +419,11 @@ function Sidebar({ onSettings }) {
       {/* Logo */}
       <div className="px-5 py-6">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-            <div className="w-4 h-4 border-[2px] border-white rounded-[3px]" />
+          <Logo size={30} />
+          <div className="leading-none">
+            <div className="text-white font-bold text-sm tracking-tight">Stemronic <span className="text-brand-400">AI</span></div>
+            <div className="text-[8.5px] uppercase tracking-[0.16em] text-slate-400 mt-1">Lead Gen Platform</div>
           </div>
-          <span className="text-white font-semibold text-sm tracking-tight">Lead Pipeline</span>
         </div>
       </div>
 
@@ -387,13 +434,13 @@ function Sidebar({ onSettings }) {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors
                ${isActive
-                 ? 'bg-white/10 text-white font-medium'
+                 ? 'bg-brand-500/15 text-white font-medium ring-1 ring-inset ring-brand-500/25'
                  : 'text-slate-400 hover:bg-white/[.06] hover:text-slate-200'}`
             }
           >
             {({ isActive }) => (
               <>
-                <Icon size={16} className={isActive ? 'text-blue-400' : ''} strokeWidth={isActive ? 2 : 1.75} />
+                <Icon size={16} className={isActive ? 'text-brand-400' : ''} strokeWidth={isActive ? 2 : 1.75} />
                 <span className="flex-1">{label}</span>
                 {isActive && <ChevronRight size={13} className="text-slate-500" />}
               </>
@@ -459,12 +506,12 @@ function ChangePasswordModal({ onClose }) {
           <div key={lbl} className="mb-3">
             <label className="block text-xs font-medium text-slate-600 mb-1.5">{lbl}</label>
             <input type="password" required value={val} onChange={e => set(e.target.value)}
-              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
           </div>
         ))}
         <div className="flex gap-2.5 mt-5">
           <button type="submit" disabled={busy}
-            className="flex-1 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50">
+            className="flex-1 py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50">
             {busy ? 'Saving…' : 'Update password'}
           </button>
           <button type="button" onClick={onClose}
@@ -490,7 +537,7 @@ function TopBar() {
       <div className="relative ml-auto">
         <button onClick={() => setMenu(m => !m)}
           className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors">
-          <span className="w-8 h-8 rounded-full bg-slate-900 text-white text-xs font-semibold flex items-center justify-center">
+          <span className="w-8 h-8 rounded-full bg-brand-600 text-white text-xs font-semibold flex items-center justify-center">
             {user?.name?.[0]?.toUpperCase()}
           </span>
           <span className="text-sm text-slate-700 hidden sm:block">{user?.name}</span>

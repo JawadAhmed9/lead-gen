@@ -291,15 +291,15 @@ function ImportModal({ onClose, onDone }) {
           <div className="flex gap-2.5 pt-1">
             {status === 'done' ? (
               <button onClick={onClose}
-                className="flex-1 py-2.5 bg-slate-900 text-white text-sm font-medium
-                           rounded-lg hover:bg-slate-800 transition-colors">
+                className="flex-1 py-2.5 bg-brand-600 text-white text-sm font-medium
+                           rounded-lg hover:bg-brand-700 transition-colors">
                 Done
               </button>
             ) : (
               <>
                 <button onClick={upload} disabled={!file || status === 'uploading'}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-900
-                             text-white text-sm font-medium rounded-lg hover:bg-slate-800
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand-600
+                             text-white text-sm font-medium rounded-lg hover:bg-brand-700
                              transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                   {status === 'uploading'
                     ? <><Loader size={14} className="animate-spin" /> Importing...</>
@@ -389,7 +389,7 @@ function AddModal({ onClose, onDone }) {
                   onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
                   className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm bg-white
                              placeholder:text-slate-400 focus:outline-none focus:ring-2
-                             focus:ring-blue-500 focus:border-transparent transition"
+                             focus:ring-brand-500 focus:border-transparent transition"
                 />
               </div>
             ))}
@@ -397,8 +397,8 @@ function AddModal({ onClose, onDone }) {
 
           <div className="flex gap-2.5">
             <button type="submit" disabled={busy}
-              className="flex-1 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-lg
-                         hover:bg-slate-800 transition-colors disabled:opacity-50">
+              className="flex-1 py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg
+                         hover:bg-brand-700 transition-colors disabled:opacity-50">
               {busy ? 'Adding...' : 'Add lead'}
             </button>
             <button type="button" onClick={onClose}
@@ -646,8 +646,8 @@ export default function Leads() {
                 <Upload size={14} /> Import Excel
               </button>
               <button onClick={() => setShowAdd(true)}
-                className="flex items-center gap-2 px-3.5 py-2 bg-slate-900 text-white
-                           text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors">
+                className="flex items-center gap-2 px-3.5 py-2 bg-brand-600 text-white
+                           text-sm font-medium rounded-lg hover:bg-brand-700 transition-colors">
                 <Plus size={14} /> Add lead
               </button>
             </>
@@ -664,7 +664,7 @@ export default function Leads() {
             onChange={e => setRawSearch(e.target.value)}
             placeholder="Search name, company, email..."
             className="pl-9 pr-4 py-2 border border-slate-200 bg-white rounded-lg text-sm w-72
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 transition
+                       focus:outline-none focus:ring-2 focus:ring-brand-500 transition
                        placeholder:text-slate-400"
           />
           {rawSearch && (
@@ -679,13 +679,13 @@ export default function Leads() {
           <SlidersHorizontal size={13} className="text-slate-400 ml-1" />
           <button onClick={() => { setStatusFilter(''); setPage(1) }}
             className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors
-                        ${!statusFilter ? 'bg-slate-900 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                        ${!statusFilter ? 'bg-brand-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
             All
           </button>
           {STATUSES.map(s => (
             <button key={s} onClick={() => { setStatusFilter(s); setPage(1) }}
               className={`px-3 py-2 rounded-lg text-xs font-medium capitalize transition-colors
-                          ${statusFilter === s ? 'bg-slate-900 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                          ${statusFilter === s ? 'bg-brand-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
               {s}
             </button>
           ))}
@@ -713,7 +713,7 @@ export default function Leads() {
             <span className="text-[11px] text-slate-400 font-medium ml-1 uppercase tracking-wide">Owner</span>
             <select value={ownerFilter} onChange={e => { setOwnerFilter(e.target.value); setPage(1) }}
               className="px-3 py-2 rounded-lg text-xs font-medium border border-slate-200 text-slate-600 bg-white
-                         focus:outline-none focus:ring-2 focus:ring-blue-500">
+                         focus:outline-none focus:ring-2 focus:ring-brand-500">
               <option value="">All owners</option>
               <option value="unassigned">Unassigned</option>
               {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -833,7 +833,7 @@ export default function Leads() {
                           <div className={`w-8 h-8 rounded-full border flex items-center justify-center
                                           text-xs font-semibold flex-shrink-0
                                           ${hasName
-                                            ? 'bg-slate-900 border-slate-700 text-white'
+                                            ? 'bg-brand-600 border-slate-700 text-white'
                                             : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
                             {initial}
                           </div>
@@ -878,7 +878,7 @@ export default function Leads() {
                       <td className="px-4 py-3.5 whitespace-nowrap" onClick={e => e.stopPropagation()}>
                         {can(user, 'assign') ? (
                           <select value={lead.assigned_to || ''} onChange={e => assignOne(lead.id, e.target.value)}
-                            className={`text-xs border rounded-lg px-2 py-1 bg-white max-w-[140px] focus:outline-none focus:ring-2 focus:ring-blue-500
+                            className={`text-xs border rounded-lg px-2 py-1 bg-white max-w-[140px] focus:outline-none focus:ring-2 focus:ring-brand-500
                                         ${lead.assigned_to ? 'border-slate-200 text-slate-700' : 'border-dashed border-slate-300 text-slate-400'}`}>
                             <option value="">Unassigned</option>
                             {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -886,7 +886,7 @@ export default function Leads() {
                         ) : (
                           lead.assigned_to_name
                             ? <span className="inline-flex items-center gap-1.5 text-xs text-slate-600">
-                                <span className="w-5 h-5 rounded-full bg-slate-900 text-white text-[10px] flex items-center justify-center font-semibold">
+                                <span className="w-5 h-5 rounded-full bg-brand-600 text-white text-[10px] flex items-center justify-center font-semibold">
                                   {lead.assigned_to_name[0]?.toUpperCase()}
                                 </span>
                                 {lead.assigned_to_name}
@@ -955,7 +955,7 @@ export default function Leads() {
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-slate-400">Rows</span>
               <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}
-                className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                 {[25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
@@ -974,7 +974,7 @@ export default function Leads() {
                   <button key={pg} onClick={() => setPage(pg)}
                     className={`w-8 h-8 text-xs rounded-lg transition-colors font-medium
                                 ${pg === page
-                                  ? 'bg-slate-900 text-white'
+                                  ? 'bg-brand-600 text-white'
                                   : 'border border-slate-200 text-slate-600 hover:bg-slate-50 bg-white'}`}>
                     {pg}
                   </button>
@@ -996,7 +996,7 @@ export default function Leads() {
           <motion.div
             initial={{ opacity: 0, y: 20, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 20, x: '-50%' }}
-            className="fixed bottom-6 left-1/2 z-40 flex items-center gap-3 bg-slate-900 text-white
+            className="fixed bottom-6 left-1/2 z-40 flex items-center gap-3 bg-brand-600 text-white
                        rounded-xl shadow-panel px-4 py-3">
             <span className="text-sm">{selected.size} selected</span>
             <div className="w-px h-5 bg-white/20" />

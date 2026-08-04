@@ -124,7 +124,7 @@ export function ConfirmProvider({ children }) {
               <div className="flex gap-2.5 mt-5">
                 <button onClick={() => close(true)}
                   className={`flex-1 py-2.5 rounded-lg text-sm font-medium text-white transition-colors
-                              ${state.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-900 hover:bg-slate-800'}`}>
+                              ${state.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-600 hover:bg-brand-700'}`}>
                   {state.confirmLabel}
                 </button>
                 <button onClick={() => close(false)}

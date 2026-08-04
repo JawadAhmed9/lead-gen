@@ -144,7 +144,7 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-5 border-b border-slate-100">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-full bg-slate-900 flex items-center justify-center text-white font-semibold flex-shrink-0">
+            <div className="w-11 h-11 rounded-full bg-brand-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
               {initial}
             </div>
             <div className="min-w-0">
@@ -236,7 +236,7 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
                   {onStartCall && (
                     <button onClick={() => { onStartCall(d); onClose() }}
                       className="w-full flex items-center justify-center gap-2 py-2.5 mb-4 bg-navy-900 text-white
-                                 rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors">
+                                 rounded-lg text-sm font-semibold hover:bg-brand-700 transition-colors">
                       <Phone size={15} /> Start guided call
                     </button>
                   )}
@@ -257,7 +257,7 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
                         <div className="mt-3 space-y-2">
                           {logType === 'call' && (
                             <select value={logForm.outcome} onChange={e => setLogForm(f => ({ ...f, outcome: e.target.value }))}
-                              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                               <option value="">Call outcome…</option>
                               <option value="connected">Connected</option>
                               <option value="voicemail">Voicemail</option>
@@ -267,7 +267,7 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
                           {logType === 'deal' && (
                             <div className="flex gap-2">
                               <select value={logForm.outcome} onChange={e => setLogForm(f => ({ ...f, outcome: e.target.value }))}
-                                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                                 <option value="won">Won</option>
                                 <option value="lost">Lost</option>
                               </select>
@@ -275,16 +275,16 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
                                 <DollarSign size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input type="number" placeholder="Deal value" value={logForm.value}
                                   onChange={e => setLogForm(f => ({ ...f, value: e.target.value }))}
-                                  className="w-full pl-7 pr-2 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                  className="w-full pl-7 pr-2 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                               </div>
                             </div>
                           )}
                           <textarea rows={2} placeholder="Notes (optional)" value={logForm.notes}
                             onChange={e => setLogForm(f => ({ ...f, notes: e.target.value }))}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500" />
                           <div className="flex gap-2">
                             <button onClick={submitLog} disabled={logging}
-                              className="flex-1 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50">
+                              className="flex-1 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50">
                               {logging ? 'Saving…' : 'Save'}
                             </button>
                             <button onClick={() => setLogType(null)}
@@ -326,7 +326,7 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
                     {can(user, 'log') && cadences.length > 0 && (
                       <div className="flex items-center gap-1.5">
                         <select value={cadenceSel} onChange={e => setCadenceSel(e.target.value)}
-                          className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                           <option value="">Enroll in cadence…</option>
                           {cadences.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
@@ -355,11 +355,11 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
                     <div className="flex gap-1.5 border-t border-slate-100 pt-3">
                       <input value={newTask.title} onChange={e => setNewTask(n => ({ ...n, title: e.target.value }))}
                         placeholder="New task…"
-                        className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500" />
                       <input type="date" value={newTask.due} onChange={e => setNewTask(n => ({ ...n, due: e.target.value }))}
-                        className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500" />
                       <button onClick={addTask}
-                        className="px-2.5 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-medium hover:bg-slate-800"><Plus size={13} /></button>
+                        className="px-2.5 py-1.5 bg-brand-600 text-white rounded-lg text-xs font-medium hover:bg-brand-700"><Plus size={13} /></button>
                     </div>
                   )}
                 </div>
@@ -441,7 +441,7 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
             )}
             {can(user, 'send') && d.email && (
               <button onClick={() => onCompose?.(d)}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors">
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 transition-colors">
                 <Mail size={14} /> Compose
               </button>
             )}

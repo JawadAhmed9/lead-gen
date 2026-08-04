@@ -54,12 +54,12 @@ function ScriptEditor({ initial, onClose, onSaved }) {
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1.5">Script name</label>
               <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Enterprise manufacturers"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1.5">Client category</label>
               <input value={category} onChange={e => setCategory(e.target.value)} placeholder="e.g. Manufacturing"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
             </div>
           </div>
 
@@ -70,14 +70,14 @@ function ScriptEditor({ initial, onClose, onSaved }) {
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2 h-2 rounded-full" style={{ background: PHASE_COLORS[i % PHASE_COLORS.length] }} />
                   <input value={p.phase} onChange={e => setPhase(i, 'phase', e.target.value)} placeholder={`Phase ${i + 1} name`}
-                    className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500" />
                   {phases.length > 1 && (
                     <button onClick={() => removePhase(i)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={14} /></button>
                   )}
                 </div>
                 <textarea value={p.points} onChange={e => setPhase(i, 'points', e.target.value)} rows={4}
                   placeholder="One talking point per line…"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500" />
               </div>
             ))}
             <button onClick={addPhase} className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700">
@@ -87,7 +87,7 @@ function ScriptEditor({ initial, onClose, onSaved }) {
 
           <div className="flex gap-2.5 pt-2">
             <button onClick={save} disabled={saving}
-              className="flex-1 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center justify-center gap-2">
+              className="flex-1 py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 flex items-center justify-center gap-2">
               <Save size={14} /> {saving ? 'Saving…' : 'Save script'}
             </button>
             <button onClick={onClose} className="px-5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</button>
@@ -122,7 +122,7 @@ export default function Scripts() {
           <p className="text-sm text-slate-500 mt-1">Talk-tracks agents pick from during calls — organized by client category.</p>
         </div>
         <button onClick={() => setEditing({})}
-          className="flex items-center gap-2 px-3.5 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800">
+          className="flex items-center gap-2 px-3.5 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700">
           <Plus size={14} /> New script
         </button>
       </div>
