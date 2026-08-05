@@ -407,7 +407,7 @@ const NAV = [
   { to: '/pipeline',   label: 'Pipeline',    icon: Zap,             roles: ['admin', 'manager'] },
   { to: '/compose',    label: 'Compose',     icon: Mail,            roles: ['admin', 'manager', 'agent'] },
   { to: '/team',       label: 'Team',        icon: UserCog,         roles: ['admin', 'manager'] },
-  { to: '/scripts',    label: 'Scripts',     icon: FileText,        roles: ['admin', 'manager'] },
+  { to: '/scripts',    label: 'Scripts',     icon: FileText,        roles: ['admin', 'manager', 'agent'] },
   { to: '/activity',   label: 'Activity',    icon: ActivityIcon,    roles: ['admin', 'manager'] },
 ]
 

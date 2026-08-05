@@ -95,17 +95,17 @@ class ScriptReq(BaseModel):
 
 @router.post("/call/scripts")
 def create_script(req: ScriptReq, user=Depends(current_user)):
-    require(user, "admin", "manager")
+    require(user, "admin", "manager", "agent")
     return sales.create_script(req.name, req.category, req.steps, user["id"])
 
 @router.put("/call/scripts/{sid}")
 def update_script(sid: str, req: ScriptReq, user=Depends(current_user)):
-    require(user, "admin", "manager")
+    require(user, "admin", "manager", "agent")
     return sales.update_script(sid, req.name, req.category, req.steps)
 
 @router.delete("/call/scripts/{sid}")
 def delete_script(sid: str, user=Depends(current_user)):
-    require(user, "admin", "manager")
+    require(user, "admin", "manager", "agent")
     sales.delete_script(sid)
     return {"ok": True}
 
