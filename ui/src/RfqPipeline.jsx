@@ -42,15 +42,15 @@ export default function RfqPipeline() {
 
   if (!data) {
     return (
-      <motion.div {...pageAnim} className="p-8">
+      <motion.div {...pageAnim} className="p-4 sm:p-6 lg:p-8">
         <h1 className="text-2xl font-semibold text-slate-900 mb-6">RFQ Pipeline</h1>
-        <div className="grid grid-cols-4 gap-4">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-72 rounded-xl" />)}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-72 rounded-xl" />)}</div>
       </motion.div>
     )
   }
 
   return (
-    <motion.div {...pageAnim} className="p-8 max-w-[1300px]">
+    <motion.div {...pageAnim} className="p-4 sm:p-6 lg:p-8 max-w-[1300px]">
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">RFQ Pipeline</h1>
@@ -62,7 +62,7 @@ export default function RfqPipeline() {
       </div>
 
       {/* Forecast header */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { icon: TrendingUp, label: 'Weighted forecast', value: fmtMoney(data.forecast), color: '#2563EB', ring: '#EFF6FF' },
           { icon: DollarSign, label: 'Open pipeline', value: fmtMoney(data.open_value), color: '#7C3AED', ring: '#F5F3FF' },
@@ -80,7 +80,7 @@ export default function RfqPipeline() {
       </div>
 
       {/* Kanban */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {data.stages.map(stage => {
           const meta = STAGE_META[stage]
           const cards = data.by_stage[stage] || []

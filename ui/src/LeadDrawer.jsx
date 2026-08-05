@@ -139,7 +139,7 @@ export default function LeadDrawer({ leadId, user, onClose, onCompose, onChanged
       <motion.aside
         initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
         transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-        className="absolute right-0 top-0 bottom-0 w-[460px] bg-white shadow-panel flex flex-col">
+        className="absolute right-0 top-0 bottom-0 w-full sm:w-[460px] bg-white shadow-panel flex flex-col">
 
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-5 border-b border-slate-100">

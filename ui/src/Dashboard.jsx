@@ -97,7 +97,7 @@ export default function Dashboard() {
     : null
 
   return (
-    <motion.div {...pageAnim} className="p-8 max-w-[1400px]">
+    <motion.div {...pageAnim} className="p-4 sm:p-6 lg:p-8 max-w-[1400px]">
       {/* Page header */}
       <div className="flex items-start justify-between mb-8">
         <div>
@@ -115,7 +115,7 @@ export default function Dashboard() {
       </div>
 
       {/* KPI grid */}
-      <div className="grid grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         {KPI.map(({ key, label, icon: Icon, color, ring, phase2 }, i) => (
           <motion.div key={key}
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
@@ -146,7 +146,7 @@ export default function Dashboard() {
       </div>
 
       {/* Charts row */}
-      <div className="grid grid-cols-3 gap-5 mb-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
         {/* Pipeline funnel */}
         <div className="col-span-2 bg-white border border-slate-100 rounded-xl p-6">
           <div className="flex items-center justify-between mb-5">

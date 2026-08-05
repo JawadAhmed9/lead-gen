@@ -85,7 +85,7 @@ export default function AgentDashboard() {
 
   if (!series) {
     return (
-      <motion.div {...pageAnim} className="p-8 max-w-[1100px]">
+      <motion.div {...pageAnim} className="p-4 sm:p-6 lg:p-8 max-w-[1100px]">
         <h1 className="text-2xl font-semibold text-slate-900 mb-6">My Dashboard</h1>
         <div className="grid grid-cols-2 gap-4 mb-5">{[0, 1].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}</div>
         <div className="grid grid-cols-2 gap-5">{[0, 1].map(i => <Skeleton key={i} className="h-56 rounded-xl" />)}</div>
@@ -94,7 +94,7 @@ export default function AgentDashboard() {
   }
 
   return (
-    <motion.div {...pageAnim} className="p-8 max-w-[1100px]">
+    <motion.div {...pageAnim} className="p-4 sm:p-6 lg:p-8 max-w-[1100px]">
       <div className="flex items-start justify-between mb-7">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">{greeting}, {user.name?.split(' ')[0]}</h1>
@@ -136,7 +136,7 @@ export default function AgentDashboard() {
 
       {/* My numbers */}
       {m && (
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[
             { label: 'Points', value: fmtNum(m.points) },
             { label: 'RFQs secured', value: m.rfqs },

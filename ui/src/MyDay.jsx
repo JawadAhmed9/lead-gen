@@ -79,7 +79,7 @@ export default function MyDay() {
   ]
 
   return (
-    <motion.div {...pageAnim} className="p-8 max-w-[820px]">
+    <motion.div {...pageAnim} className="p-4 sm:p-6 lg:p-8 max-w-[820px]">
       <div className="flex items-start justify-between mb-7">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">My Day</h1>

@@ -186,9 +186,9 @@ export default function Analytics() {
 
   if (loading || !ov || !seg) {
     return (
-      <motion.div {...pageAnim} className="p-8 max-w-[1400px]">
+      <motion.div {...pageAnim} className="p-4 sm:p-6 lg:p-8 max-w-[1400px]">
         <h1 className="text-2xl font-semibold text-slate-900 tracking-tight mb-6">Analytics</h1>
-        <div className="grid grid-cols-3 gap-4 mb-6">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}</div>
         <div className="grid grid-cols-2 gap-5">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-56 rounded-xl" />)}</div>
       </motion.div>
     )
@@ -200,7 +200,7 @@ export default function Analytics() {
   // Empty state — nothing collected yet
   if ((ov.totals?.total_leads || 0) === 0) {
     return (
-      <motion.div {...pageAnim} className="p-8 max-w-[1400px]">
+      <motion.div {...pageAnim} className="p-4 sm:p-6 lg:p-8 max-w-[1400px]">
         <h1 className="text-2xl font-semibold text-slate-900 tracking-tight mb-1">Analytics</h1>
         <p className="text-sm text-slate-500 mb-8">Business outcomes and market coverage</p>
         <div className="bg-white border border-slate-100 rounded-xl py-20 text-center">
@@ -216,7 +216,7 @@ export default function Analytics() {
   }
 
   return (
-    <motion.div {...pageAnim} className="p-8 max-w-[1400px]">
+    <motion.div {...pageAnim} className="p-4 sm:p-6 lg:p-8 max-w-[1400px]">
       {/* Header */}
       <div className="flex items-start justify-between mb-7">
         <div>
@@ -236,7 +236,7 @@ export default function Analytics() {
       </div>
 
       {/* Outcome KPIs */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <KpiCard icon={DollarSign} label="Weighted pipeline value" big delay={0}
           value={fmtMoney(econ.weighted_value)} sub={`at ${Math.round(win * 100)}% win rate`}
           color="#059669" ring="#ECFDF5" />
@@ -272,7 +272,7 @@ export default function Analytics() {
             </button>
           )}
         </div>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div>
             <div className="flex justify-between text-xs mb-1.5">
               <span className="text-slate-600">Avg deal size</span>
@@ -311,7 +311,7 @@ export default function Analytics() {
 
       {/* Market intelligence */}
       <h2 className="text-sm font-semibold text-slate-900 mb-3">Market intelligence</h2>
-      <div className="grid grid-cols-3 gap-5 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6">
         <BarList title="By country" icon={MapPin} items={seg.by_country}
           colorFn={(it) => seg.gcc_countries.includes(it.key) ? '#3B82F6' : '#CBD5E1'}
           footnote="Blue = GCC target market" />

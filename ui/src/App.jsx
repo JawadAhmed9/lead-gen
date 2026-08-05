@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   LayoutDashboard, Users, Mail, Settings, LogOut,
@@ -7,6 +7,7 @@ import {
   BarChart3, Activity as ActivityIcon, Trophy, UserCog,
   ChevronDown, KeyRound, Command, CalendarClock, FileText, FileCheck,
   Cpu, Factory, ShieldCheck, TrendingUp, Infinity as InfinityIcon, Mail as MailIcon, Phone, Globe,
+  Menu as MenuIcon,
 } from 'lucide-react'
 import { auth, usersApi, can } from './api'
 import { Logo, Wordmark } from './Logo'
@@ -238,7 +239,7 @@ function SettingsPanel({ onClose }) {
       <motion.aside
         initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
         transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-        className="absolute right-0 top-0 bottom-0 w-[480px] bg-white shadow-panel flex flex-col"
+        className="absolute right-0 top-0 bottom-0 w-full sm:w-[480px] bg-white shadow-panel flex flex-col"
       >
         {/* Header */}
         <div className="flex items-start justify-between px-7 py-6 border-b border-slate-100">
@@ -410,12 +411,21 @@ const NAV = [
   { to: '/activity',   label: 'Activity',    icon: ActivityIcon,    roles: ['admin', 'manager'] },
 ]
 
-function Sidebar({ onSettings }) {
+function Sidebar({ onSettings, open, onClose }) {
   const { user, logout } = useAuth()
   const navItems = NAV.filter(n => n.roles.includes(user?.role))
 
   return (
-    <aside className="w-[220px] flex-shrink-0 bg-navy-900 flex flex-col h-full">
+    <>
+      {/* Mobile backdrop */}
+      <div
+        onClick={onClose}
+        className={`fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[1px] lg:hidden transition-opacity duration-200
+                    ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      />
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-[240px] sm:w-[220px] flex-shrink-0 bg-navy-900 flex flex-col h-full
+                         transform transition-transform duration-200 ease-out lg:translate-x-0
+                         ${open ? 'translate-x-0' : '-translate-x-full'}`}>
       {/* Logo */}
       <div className="px-5 py-6">
         <div className="flex items-center gap-2.5">
@@ -430,7 +440,7 @@ function Sidebar({ onSettings }) {
       {/* Nav links */}
       <nav className="flex-1 px-3 space-y-0.5">
         {navItems.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} end={to === '/'}
+          <NavLink key={to} to={to} end={to === '/'} onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors
                ${isActive
@@ -477,6 +487,7 @@ function Sidebar({ onSettings }) {
         </div>
       </div>
     </aside>
+    </>
   )
 }
 
@@ -523,12 +534,22 @@ function ChangePasswordModal({ onClose }) {
 }
 
 // ─── Top bar ────────────────────────────────────────────────────────────────
-function TopBar() {
+function TopBar({ onMenu }) {
   const { user, logout } = useAuth()
   const [menu, setMenu] = useState(false)
   const [pw, setPw] = useState(false)
   return (
-    <header className="h-14 flex-shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-6">
+    <header className="h-14 flex-shrink-0 bg-white border-b border-slate-200 flex items-center gap-2 px-4 sm:px-6">
+      {/* Mobile: hamburger + brand */}
+      <button onClick={onMenu} aria-label="Open menu"
+        className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+        <MenuIcon size={20} />
+      </button>
+      <div className="flex items-center gap-2 lg:hidden">
+        <Logo size={24} />
+        <span className="font-bold text-navy-900 text-sm tracking-tight">Stemronic <span className="text-brand-500">AI</span></span>
+      </div>
+
       <button onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
         className="hidden sm:flex items-center gap-2 text-xs text-slate-400 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:bg-slate-50 transition-colors">
         <Command size={12} /> Quick search
@@ -573,13 +594,19 @@ function TopBar() {
 function Layout() {
   const { user } = useAuth()
   const [showSettings, setShowSettings] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
+  const location = useLocation()
+
+  // Close the mobile drawer whenever the route changes.
+  useEffect(() => { setNavOpen(false) }, [location.pathname])
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
-      <Sidebar onSettings={() => setShowSettings(true)} />
+      <Sidebar open={navOpen} onClose={() => setNavOpen(false)}
+               onSettings={() => { setShowSettings(true); setNavOpen(false) }} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <TopBar />
+        <TopBar onMenu={() => setNavOpen(true)} />
         <main className="flex-1 overflow-y-auto min-w-0">
         <AnimatePresence mode="wait">
           <Routes>

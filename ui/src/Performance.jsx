@@ -37,7 +37,7 @@ function AgentDrawer({ agentId, onClose }) {
         className="absolute inset-0 bg-slate-900/30 backdrop-blur-[2px]" onClick={onClose} />
       <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
         transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-        className="absolute right-0 top-0 bottom-0 w-[440px] bg-white shadow-panel flex flex-col">
+        className="absolute right-0 top-0 bottom-0 w-full sm:w-[440px] bg-white shadow-panel flex flex-col">
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-full bg-brand-600 text-white flex items-center justify-center font-semibold">
@@ -249,7 +249,7 @@ export default function Performance() {
   const top3 = agents.slice(0, 3)
 
   return (
-    <motion.div {...pageAnim} className="p-8 max-w-[1200px]">
+    <motion.div {...pageAnim} className="p-4 sm:p-6 lg:p-8 max-w-[1200px]">
       <div className="flex items-start justify-between mb-7">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Leaderboard</h1>
@@ -276,7 +276,7 @@ export default function Performance() {
 
       {/* Podium */}
       {!loading && top3.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           {top3.map((a, i) => (
             <motion.div key={a.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
               onClick={() => setDrawerId(a.id)}

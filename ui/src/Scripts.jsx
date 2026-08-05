@@ -115,7 +115,7 @@ export default function Scripts() {
   const categories = [...new Set((scripts || []).map(s => s.category || 'General'))]
 
   return (
-    <motion.div {...pageAnim} className="p-8 max-w-[900px]">
+    <motion.div {...pageAnim} className="p-4 sm:p-6 lg:p-8 max-w-[900px]">
       <div className="flex items-start justify-between mb-7">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Call scripts</h1>

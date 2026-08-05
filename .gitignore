@@ -32,3 +32,4 @@ login_preview.html
 
 # NOTE: data/leads.db is intentionally tracked — it's the baseline dataset the
 # app ships with. Keep this repo PRIVATE (it contains real contact info).
+mobile_preview.html

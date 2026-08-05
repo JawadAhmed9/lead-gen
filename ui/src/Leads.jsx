@@ -623,7 +623,7 @@ export default function Leads() {
   ]
 
   return (
-    <motion.div {...pageAnim} className="p-8">
+    <motion.div {...pageAnim} className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>

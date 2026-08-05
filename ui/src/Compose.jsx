@@ -172,7 +172,7 @@ export default function Compose() {
   const name = lead ? [lead.first_name, lead.last_name].filter(Boolean).join(' ') || lead.company : ''
 
   return (
-    <motion.div {...pageAnim} className="p-8">
+    <motion.div {...pageAnim} className="p-4 sm:p-6 lg:p-8">
       <div className="mb-7">
         <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Compose</h1>
         <p className="text-sm text-slate-500 mt-1">Send personalized emails with AI-generated drafts</p>
@@ -190,7 +190,7 @@ export default function Compose() {
         </div>
       )}
 
-      <div className="grid grid-cols-5 gap-6 max-w-[1100px]">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 max-w-[1100px]">
         {/* Left: editor */}
         <div className="col-span-3 space-y-4">
 
