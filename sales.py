@@ -107,17 +107,127 @@ OILGAS_SCRIPT = [
         "Propose a scoped RFQ or technical review.", "Ask for the RFQ.", "Confirm next step + contact."]},
 ]
 
+# ─── Industry sample scripts (Stemronic client verticals) ─────────────────────
+FOODBEV_SCRIPT = [
+    {"phase": "Opening", "seconds": 30, "color": "#2563EB", "points": [
+        "Intro: Stemronic — automation, IoT & AI for food & beverage plants.",
+        "Confirm production / QA / plant role.",
+        "Reason: cut waste and changeover losses, protect yield and food safety.",
+        "Ask for two minutes."]},
+    {"phase": "Discovery", "seconds": 120, "color": "#7C3AED", "points": [
+        "Which lines are still manual — filling, packaging, palletizing?",
+        "Recurring downtime, changeover time, or giveaway/overfill losses?",
+        "How is batch quality, temperature and yield logged today — paper or system?",
+        "Any HACCP / traceability / audit pressure you're preparing for?",
+        "Planned capacity expansion or new SKUs this year?"]},
+    {"phase": "Value & Close", "seconds": 90, "color": "#059669", "points": [
+        "Tie their pain to line automation + IIoT dashboards + AI vision QC (fill level, foreign-object, label check).",
+        "Offer a single-line assessment or a pilot on their worst line.",
+        "Ask directly: can we quote a pilot?",
+        "Confirm follow-up date and the right contact."]},
+]
+
+PHARMA_SCRIPT = [
+    {"phase": "Opening", "seconds": 30, "color": "#2563EB", "points": [
+        "Intro: Stemronic — automation, IoT & AI for regulated manufacturing.",
+        "Confirm ops / quality / validation role.",
+        "Reason: fewer deviations, faster batch release, audit-ready data.",
+        "Ask for two minutes."]},
+    {"phase": "Discovery", "seconds": 120, "color": "#7C3AED", "points": [
+        "Which steps are still paper/manual — batch records, environmental monitoring, logbooks?",
+        "Deviation / CAPA volume and where time is lost?",
+        "Serialization / track-and-trace and data-integrity (21 CFR Part 11) posture?",
+        "Current SCADA / MES and cleanroom & utility monitoring gaps?",
+        "Upcoming audits, expansions or new product lines?"]},
+    {"phase": "Value & Close", "seconds": 90, "color": "#059669", "points": [
+        "Tie pain to SCADA/MES integration + IIoT environmental monitoring + electronic batch records.",
+        "Offer a compliance & automation gap assessment.",
+        "Ask to quote a validated pilot.",
+        "Confirm next step and decision process."]},
+]
+
+LOGISTICS_SCRIPT = [
+    {"phase": "Opening", "seconds": 30, "color": "#2563EB", "points": [
+        "Intro: Stemronic — IoT & automation for warehouses and distribution centers.",
+        "Confirm operations / warehouse role.",
+        "Reason: real-time visibility, fewer errors, faster throughput.",
+        "Ask for two minutes."]},
+    {"phase": "Discovery", "seconds": 120, "color": "#7C3AED", "points": [
+        "Picking / sorting still manual or paper-driven?",
+        "Inventory accuracy, mis-ships, or stockout issues?",
+        "Any conveyors, AS/RS or robotics in place today?",
+        "Real-time tracking of assets or temperature (cold chain)?",
+        "Where do peak-season throughput bottlenecks hit hardest?"]},
+    {"phase": "Value & Close", "seconds": 90, "color": "#059669", "points": [
+        "Tie pain to warehouse IoT (RFID/sensors + live dashboards) + automation/robotics integration + AI throughput analytics.",
+        "Offer a site walkthrough or a pilot in one zone.",
+        "Ask to quote a pilot zone.",
+        "Confirm follow-up and stakeholders."]},
+]
+
+AUTOMOTIVE_SCRIPT = [
+    {"phase": "Opening", "seconds": 30, "color": "#2563EB", "points": [
+        "Intro: Stemronic — robotics & automation for automotive and metal fabrication.",
+        "Confirm plant / production / process role.",
+        "Reason: higher throughput, consistent quality, less scrap and rework.",
+        "Ask for two minutes."]},
+    {"phase": "Discovery", "seconds": 120, "color": "#7C3AED", "points": [
+        "Which cells are still manual — welding, assembly, material handling?",
+        "Current OEE, scrap and rework rates?",
+        "Existing robots / PLC / SCADA and where integration breaks down?",
+        "Part-level traceability requirements from your OEM customers?",
+        "Any line expansion, retool, or new model launch coming?"]},
+    {"phase": "Value & Close", "seconds": 90, "color": "#059669", "points": [
+        "Tie pain to robotic cells + PLC/SCADA integration + AI vision inspection + OEE dashboards.",
+        "Offer an OEE / line assessment.",
+        "Ask to quote a robotic cell or a retrofit.",
+        "Confirm next step and budget cycle."]},
+]
+
+UTILITIES_SCRIPT = [
+    {"phase": "Opening", "seconds": 30, "color": "#2563EB", "points": [
+        "Intro: Stemronic — SCADA & IIoT for utilities, water and wastewater.",
+        "Confirm plant / SCADA / operations role.",
+        "Reason: remote visibility, uptime, energy efficiency and easier compliance.",
+        "Ask for two minutes."]},
+    {"phase": "Discovery", "seconds": 120, "color": "#7C3AED", "points": [
+        "Are remote assets monitored live, or via manual rounds today?",
+        "Unplanned outages or pump/motor failures — how often?",
+        "Age and gaps of the existing SCADA / telemetry?",
+        "Energy cost and efficiency targets?",
+        "How heavy is the regulatory reporting burden right now?"]},
+    {"phase": "Value & Close", "seconds": 90, "color": "#059669", "points": [
+        "Tie pain to SCADA modernization + IIoT remote monitoring + AI predictive maintenance for pumps/motors + automated compliance reporting.",
+        "Offer a network / asset assessment.",
+        "Ask to quote a pilot site.",
+        "Confirm follow-up and approvals path."]},
+]
+
 def _seed_scripts(conn):
-    if conn.execute("SELECT COUNT(*) FROM call_scripts").fetchone()[0] > 0:
-        return
+    """Ensure each sample script exists (idempotent by name) so newly added
+    verticals appear even on a database that already has scripts."""
     now = datetime.utcnow().isoformat()
-    seed = [("General outreach", "General", CALL_SCRIPT, 1),
-            ("Manufacturing / Factories", "Manufacturing", MANUFACTURING_SCRIPT, 0),
-            ("Oil & Gas / Energy", "Oil & Gas", OILGAS_SCRIPT, 0)]
+    seed = [
+        ("General outreach",            "General",                CALL_SCRIPT,        1),
+        ("Manufacturing / Factories",   "Manufacturing",          MANUFACTURING_SCRIPT, 0),
+        ("Oil & Gas / Energy",          "Oil & Gas",              OILGAS_SCRIPT,      0),
+        ("Food & Beverage Processing",  "Food & Beverage",        FOODBEV_SCRIPT,     0),
+        ("Pharmaceuticals & Life Sciences", "Pharmaceuticals",    PHARMA_SCRIPT,      0),
+        ("Logistics & Warehousing",     "Logistics & Warehousing", LOGISTICS_SCRIPT,  0),
+        ("Automotive & Metal Fabrication", "Automotive & Metals", AUTOMOTIVE_SCRIPT,  0),
+        ("Utilities, Water & Wastewater", "Utilities & Water",    UTILITIES_SCRIPT,   0),
+    ]
+    existing = {r[0] for r in conn.execute("SELECT name FROM call_scripts").fetchall()}
+    added = 0
     for name, cat, steps, dflt in seed:
+        if name in existing:
+            continue
         conn.execute("INSERT INTO call_scripts (id,name,category,steps,is_default,created_by,updated_at) VALUES (?,?,?,?,?,?,?)",
                      (str(uuid.uuid4()), name, cat, json.dumps(steps), dflt, "system", now))
-    conn.commit()
+        added += 1
+    if added:
+        conn.commit()
+        print(f"[sales] seeded {added} call scripts")
 
 def _script_row(r):
     d = dict(r)
