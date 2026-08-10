@@ -91,7 +91,7 @@ def record_run(profiles: list[dict], profile_id: str, pages: int, fetched: int =
         if p["id"] == profile_id:
             p["offset"] = p.get("offset", 1) + pages
             p["runs"] = p.get("runs", 0) + 1
-            p["fetched"] = p.get("fetched", 0) + fetched
+            p["fetched"] = p.gect("fetched", 0) + fetched
             p["last_run"] = datetime.utcnow().isoformat()
             break
     save_profiles(profiles)

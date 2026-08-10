@@ -33,3 +33,7 @@ login_preview.html
 # NOTE: data/leads.db is intentionally tracked — it's the baseline dataset the
 # app ships with. Keep this repo PRIVATE (it contains real contact info).
 mobile_preview.html
+agent_ui_preview.html
+
+# stray duplicate copy of the app that was committed by mistake — never track it
+Lead-Gen-Platform/

@@ -566,7 +566,7 @@ def save_pipeline_settings(settings: dict, user=Depends(current_user)):
 @app.post("/api/pipeline/{step}")
 def trigger_step(step: str, user=Depends(current_user)):
     require(user, "admin", "manager")
-    if step not in ("collect", "enrich", "score", "apollo-only"):
+    if step not in ("collect", "enrich", "score", "apollo-only", "social"):
         raise HTTPException(400, "Invalid step")
     import subprocess, sys
     env = os.environ.copy()
@@ -616,6 +616,8 @@ def trigger_step(step: str, user=Depends(current_user)):
     )
     if step == "apollo-only":
         log_activity(user, "pipeline.run", f"Collect — {run_label} (rotating filters, no re-fetch)")
+    elif step == "social":
+        log_activity(user, "pipeline.run", "Collect — Reddit + forums (free intent sources)")
     else:
         log_activity(user, "pipeline.run", f"Triggered '{step}' step")
     return {"ok": True, "step": step}
@@ -713,6 +715,129 @@ def remove_user(uid: str, user=Depends(current_user)):
     sales.delete_user(uid)
     log_activity(user, "user.remove", f"Removed {target['email']}")
     return {"ok": True}
+
+
+# ─── Copilot agent (L1 — read-only "Ask") ────────────────────────────────────
+class AgentMsg(BaseModel):
+    role: str
+    content: str
+
+class AgentChatReq(BaseModel):
+    messages: list[AgentMsg]
+
+@app.post("/api/agent/chat")
+def agent_chat(req: AgentChatReq, user=Depends(current_user)):
+    import agent
+    history = [{"role": m.role, "content": m.content} for m in req.messages if m.role in ("user", "assistant")]
+    if not history or history[-1]["role"] != "user":
+        raise HTTPException(400, "Last message must be from the user")
+    result = agent.run_agent(user, history)
+    # Light audit — log the question, not the whole transcript.
+    try:
+        log_activity(user, "agent.ask", (history[-1]["content"] or "")[:160])
+    except Exception:
+        pass
+    return result
+
+# L4 — background agents + approval inbox
+@app.post("/api/agent/jobs/run")
+def agent_run_jobs(user=Depends(current_user)):
+    require(user, "admin", "manager", "agent")
+    import agent
+    res = agent.run_jobs(user)
+    log_activity(user, "agent.jobs", f"Ran background agents — {res.get('created', 0)} new inbox items")
+    return res
+
+@app.get("/api/agent/inbox")
+def agent_inbox(user=Depends(current_user)):
+    return {"items": sales.inbox_list(user)}
+
+@app.post("/api/agent/inbox/{iid}/approve")
+def agent_inbox_approve(iid: str, user=Depends(current_user)):
+    item = sales.inbox_get(iid)
+    if not item or item["status"] != "pending":
+        raise HTTPException(404, "Item not found")
+    allowed = set(sales._agent_ids_for(user)); allowed.add(user["id"])
+    if item["for_user"] not in allowed:
+        raise HTTPException(403, "Not yours to approve")
+    p = item["payload"]; t = p.get("type")
+    if t == "send_email":
+        r = sales.send_email(p["to_email"], p["subject"], p["body"])
+        if not r.get("ok"):
+            raise HTTPException(400 if r.get("configured") is False else 502, r.get("error", "Send failed"))
+        conn = db()
+        conn.execute("INSERT INTO outreach_log (id, lead_id, email_subject, email_body, sent_at, provider_id) VALUES (?,?,?,?,?,?)",
+                     (str(uuid.uuid4()), p["lead_id"], p["subject"], p["body"], datetime.utcnow().isoformat(), r.get("provider_id", "")))
+        conn.execute("UPDATE raw_leads SET status='sent' WHERE id=?", (p["lead_id"],))
+        conn.commit(); conn.close()
+        sales.add_activity(p["lead_id"], item["for_user"], "email", outcome="sent", notes=p["subject"])
+    elif t == "followup_task":
+        from datetime import date
+        sales.create_task(p["lead_id"], item["for_user"], p.get("title", "Follow up"), "followup",
+                          p.get("due") or date.today().isoformat(), user["id"])
+    else:
+        raise HTTPException(400, "Unknown proposal type")
+    sales.inbox_resolve(iid, "approved")
+    log_activity(user, "agent.inbox.approve", t)
+    return {"ok": True}
+
+@app.post("/api/agent/inbox/{iid}/dismiss")
+def agent_inbox_dismiss(iid: str, user=Depends(current_user)):
+    item = sales.inbox_get(iid)
+    if not item:
+        raise HTTPException(404, "Not found")
+    allowed = set(sales._agent_ids_for(user)); allowed.add(user["id"])
+    if item["for_user"] not in allowed:
+        raise HTTPException(403, "Not yours")
+    sales.inbox_resolve(iid, "dismissed")
+    return {"ok": True}
+
+# ─── In-app notifications ─────────────────────────────────────────────────────
+@app.get("/api/notifications")
+def notifications(user=Depends(current_user)):
+    from datetime import date
+    today = date.today().isoformat()
+    items = []
+    try:
+        for t in sales.my_tasks(user["id"]):
+            due = t.get("due_at")
+            overdue = bool(due and due < today)
+            due_today = bool(due and due == today)
+            if overdue or due_today:
+                items.append({"id": "task_" + str(t.get("id")), "type": "task",
+                              "title": ("Overdue" if overdue else "Due today") + f": {t.get('title', 'Task')}",
+                              "sub": t.get("company") or "", "time": due or "", "route": "/myday"})
+    except Exception:
+        pass
+    try:
+        inbox = sales.inbox_list(user)
+        if inbox:
+            items.append({"id": "inbox", "type": "inbox",
+                          "title": f"{len(inbox)} Copilot suggestion{'s' if len(inbox) != 1 else ''} to review",
+                          "sub": "Open the Copilot inbox", "time": inbox[0].get("created_at", ""), "route": ""})
+    except Exception:
+        pass
+    items.sort(key=lambda x: x.get("time", ""), reverse=True)
+    return {"items": items[:30], "count": len(items)}
+
+# ─── WhatsApp outreach (scaffold — inactive until connected) ──────────────────
+class WaSendReq(BaseModel):
+    lead_id: str = ""
+    to: str
+    message: str
+
+@app.get("/api/whatsapp/status")
+def whatsapp_status(user=Depends(current_user)):
+    return {"configured": sales.whatsapp_ready()}
+
+@app.post("/api/whatsapp/send")
+def whatsapp_send(req: WaSendReq, user=Depends(current_user)):
+    require(user, "admin", "manager", "agent")
+    r = sales.send_whatsapp(req.to, req.message)
+    if not r.get("ok"):
+        raise HTTPException(400 if r.get("configured") is False else 502, r.get("error", "Send failed"))
+    log_activity(user, "whatsapp.send", f"WhatsApp to {req.to}")
+    return {"ok": True, "provider_id": r.get("provider_id", "")}
 
 
 # ─── Serve the built React app (single-service deploy) ────────────────────────

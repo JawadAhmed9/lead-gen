@@ -1,14 +1,17 @@
 """
-signal_extractor.py — Stage 2: Claude Signal Extractor
+signal_extractor.py — Stage 2: AI Signal Extractor (Groq)
 Reads raw post/job text from any social source and returns structured lead data.
 Called by collector.py for Reddit, LinkedIn jobs, and forum scrapers.
 """
 
 import httpx
 import json
-from config import ANTHROPIC_API_KEY, CLAUDE_MODEL, YOUR_COMPANY
+from config import GROQ_API_KEY, YOUR_COMPANY
 
-ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+# Uses Groq (same free LLM the scorer/email generator use) — no separate
+# Anthropic key needed. Falls back gracefully if the key isn't configured.
+GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "llama-3.3-70b-versatile"
 
 EXTRACT_SYSTEM_PROMPT = f"""You are a B2B signal extraction engine for an industrial automation company.
 
@@ -53,27 +56,33 @@ def extract_signals(raw_text: str, source: str = "unknown") -> dict | None:
     if not raw_text or len(raw_text.strip()) < 50:
         return None
 
+    if not GROQ_API_KEY or GROQ_API_KEY == "YOUR_GROQ_KEY":
+        print("    Signal extractor: GROQ_API_KEY not configured, skipping social extraction")
+        return None
+
     # Truncate to keep token cost low — 2,000 chars is plenty for signal extraction
     truncated = raw_text[:2000]
 
     try:
         resp = httpx.post(
-            ANTHROPIC_URL,
+            GROQ_URL,
             headers={
-                "x-api-key":         ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type":      "application/json",
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type":  "application/json",
             },
             json={
-                "model":      CLAUDE_MODEL,
-                "max_tokens": 300,
-                "system":     EXTRACT_SYSTEM_PROMPT,
-                "messages":   [{"role": "user", "content": f"Source: {source}\n\n{truncated}"}],
+                "model":       GROQ_MODEL,
+                "max_tokens":  300,
+                "temperature": 0.1,
+                "messages": [
+                    {"role": "system", "content": EXTRACT_SYSTEM_PROMPT},
+                    {"role": "user",   "content": f"Source: {source}\n\n{truncated}"},
+                ],
             },
             timeout=30,
         )
         resp.raise_for_status()
-        raw = resp.json()["content"][0]["text"].strip()
+        raw = resp.json()["choices"][0]["message"]["content"].strip()
 
         if raw.startswith("```"):
             raw = raw.split("```")[1]

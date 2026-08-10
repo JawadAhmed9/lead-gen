@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useLocation } from 'react-router-dom'
 import {
   Search, Sparkles, Send, User, Building2,
-  Mail, Target, ChevronDown, CheckCircle, X,
+  Mail, Target, ChevronDown, CheckCircle, X, MessageCircle,
 } from 'lucide-react'
-import { leadsApi, emailApi, can } from './api'
+import { leadsApi, emailApi, whatsappApi, can } from './api'
 import { useAuth, pageAnim } from './App'
 
 // ─── Lead detail sidebar ──────────────────────────────────────────────────────
@@ -118,8 +118,11 @@ export default function Compose() {
   const [sent, setSent]           = useState(false)
   const [error, setError]         = useState('')
   const [emailStatus, setEmailStatus] = useState(null)
+  const [channel, setChannel]     = useState('email')   // email | whatsapp
+  const [waStatus, setWaStatus]   = useState(null)
 
   useEffect(() => { emailApi.status().then(setEmailStatus).catch(() => {}) }, [])
+  useEffect(() => { whatsappApi.status().then(setWaStatus).catch(() => {}) }, [])
 
   const canSend = can(user, 'send')
 
@@ -169,6 +172,20 @@ export default function Compose() {
     }
   }
 
+  const sendWhatsapp = async () => {
+    if (!lead?.phone || !body.trim()) return
+    setSending(true); setError('')
+    try {
+      await whatsappApi.send({ lead_id: lead.id, to: lead.phone, message: body })
+      setSent(true)
+      setTimeout(() => { setLead(null); setBody(''); setSent(false) }, 3000)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSending(false)
+    }
+  }
+
   const name = lead ? [lead.first_name, lead.last_name].filter(Boolean).join(' ') || lead.company : ''
 
   return (
@@ -178,15 +195,33 @@ export default function Compose() {
         <p className="text-sm text-slate-500 mt-1">Send personalized emails with AI-generated drafts</p>
       </div>
 
-      {emailStatus && (
+      {/* Channel toggle */}
+      <div className="flex items-center gap-1 mb-4 bg-slate-100 rounded-lg p-1 w-fit">
+        {[['email', 'Email', Mail], ['whatsapp', 'WhatsApp', MessageCircle]].map(([ch, label, Icon]) => (
+          <button key={ch} onClick={() => setChannel(ch)}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors
+                        ${channel === ch ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+            <Icon size={13} /> {label}
+          </button>
+        ))}
+      </div>
+
+      {channel === 'email' && emailStatus && (
         <div className={`mb-5 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs border max-w-[1100px]
-                        ${emailStatus.configured
-                          ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                          : 'bg-amber-50 border-amber-100 text-amber-700'}`}>
+                        ${emailStatus.configured ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-amber-50 border-amber-100 text-amber-700'}`}>
           <span className={`w-2 h-2 rounded-full ${emailStatus.configured ? 'bg-emerald-500' : 'bg-amber-500'}`} />
           {emailStatus.configured
             ? <span>Email sending is <b>live</b> — sending as <b>{emailStatus.sender}</b> via Brevo.</span>
-            : <span>Email sending is <b>not configured</b>. Drafting works; add your Brevo API key &amp; sender to enable delivery. You can still draft and save.</span>}
+            : <span>Email sending is <b>not configured</b>. Drafting works; add your Brevo API key &amp; sender to enable delivery.</span>}
+        </div>
+      )}
+      {channel === 'whatsapp' && (
+        <div className={`mb-5 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs border max-w-[1100px]
+                        ${waStatus?.configured ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-amber-50 border-amber-100 text-amber-700'}`}>
+          <span className={`w-2 h-2 rounded-full ${waStatus?.configured ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+          {waStatus?.configured
+            ? <span>WhatsApp is <b>connected</b> — messages send from your WhatsApp Business number.</span>
+            : <span>WhatsApp is <b>not connected</b>. Add a Meta WhatsApp Business number to enable sending (see Roadmap). You can still draft.</span>}
         </div>
       )}
 
@@ -287,8 +322,8 @@ export default function Compose() {
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Subject line</label>
                 <input
                   value={subject} onChange={e => setSubject(e.target.value)}
-                  placeholder="e.g. Solving downtime at Acme — 15 min?"
-                  disabled={!canSend || !lead}
+                  placeholder={channel === 'whatsapp' ? 'Not used for WhatsApp' : 'e.g. Solving downtime at Acme — 15 min?'}
+                  disabled={!canSend || !lead || channel === 'whatsapp'}
                   className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm
                              focus:outline-none focus:ring-2 focus:ring-brand-500 transition
                              placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400"
@@ -320,10 +355,10 @@ export default function Compose() {
               </div>
             )}
 
-            {canSend ? (
+            {canSend ? (<>
               <button
-                onClick={sendEmail}
-                disabled={!lead?.email || !subject.trim() || !body.trim() || sending || sent}
+                onClick={channel === 'email' ? sendEmail : sendWhatsapp}
+                disabled={(channel === 'email' ? (!lead?.email || !subject.trim()) : !lead?.phone) || !body.trim() || sending || sent}
                 className={`mt-4 w-full flex items-center justify-center gap-2.5 py-2.5 rounded-lg
                             text-sm font-medium transition-all
                             ${sent
@@ -334,11 +369,16 @@ export default function Compose() {
                   <><CheckCircle size={15} /> Sent successfully</>
                 ) : sending ? (
                   <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Sending...</>
-                ) : (
+                ) : channel === 'email' ? (
                   <><Send size={14} /> Send email</>
+                ) : (
+                  <><MessageCircle size={14} /> Send WhatsApp</>
                 )}
               </button>
-            ) : (
+              {channel === 'whatsapp' && lead && !lead.phone && (
+                <p className="mt-2 text-xs text-amber-600">No phone number on this lead — enrich it or pick another to message on WhatsApp.</p>
+              )}
+            </>) : (
               <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-lg text-center">
                 <p className="text-xs text-slate-500">Viewer access — contact your admin to send emails</p>
               </div>

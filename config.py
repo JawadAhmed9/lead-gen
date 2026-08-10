@@ -77,6 +77,12 @@ BREVO_SENDER_NAME   = os.getenv("BREVO_SENDER_NAME", "Your Name")
 # Brevo inbound domain (for reply webhooks) — configure at app.brevo.com → Inbound
 BREVO_INBOUND_EMAIL = os.getenv("BREVO_INBOUND_EMAIL", "inbound@mail.yourdomain.com")
 
+# ─── WHATSAPP (Meta WhatsApp Business Cloud API) ─────────────────────────────
+# Scaffold: sending stays inactive until both are set. Create a WhatsApp Business
+# app at developers.facebook.com → get a permanent token + phone number ID.
+WHATSAPP_TOKEN      = os.getenv("WHATSAPP_TOKEN", "YOUR_WHATSAPP_TOKEN")
+WHATSAPP_PHONE_ID   = os.getenv("WHATSAPP_PHONE_ID", "YOUR_WHATSAPP_PHONE_ID")
+
 # ─── REDDIT API (praw) ───────────────────────────────────────────────────────
 # Create app at: reddit.com/prefs/apps → "script" type
 REDDIT_CLIENT_ID     = os.getenv("REDDIT_CLIENT_ID", "YOUR_REDDIT_CLIENT_ID")

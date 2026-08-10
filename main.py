@@ -230,6 +230,38 @@ def run_collect(source: str = "apollo"):
     print(f"\n  ✅ Saved {saved} new leads, {skipped} duplicates skipped")
 
 
+def run_social():
+    """
+    Free intent-based sources: Reddit + industrial forums (PLCtalk, Eng-Tips).
+    Each post is pre-screened for buying signals, then the AI signal extractor
+    (Groq) pulls out company/contact/pain/intent. Only medium/high-intent posts
+    are saved. Reddit needs free API keys (config REDDIT_*); if missing it's
+    skipped automatically. Forums need no keys.
+    """
+    print("\n[STEP: SOCIAL] Collecting free intent leads (Reddit + forums)...")
+    from collector import collect_reddit_leads, collect_forum_leads
+
+    leads = []
+    for name, fn in (("Reddit", collect_reddit_leads), ("Forums", collect_forum_leads)):
+        try:
+            found = fn() or []
+            print(f"  {name}: {len(found)} signal leads")
+            leads.extend(found)
+        except Exception as e:
+            print(f"  {name}: error — {e}")
+
+    saved = skipped = 0
+    for lead in leads:
+        if save_raw_lead(lead):
+            saved += 1
+        else:
+            skipped += 1
+
+    print(f"\n  ✅ Saved {saved} new intent leads, {skipped} duplicates skipped")
+    if saved:
+        print("  Next: run Enrich, then Score.")
+
+
 def run_enrich():
     """
     Enriches raw leads:
@@ -427,6 +459,7 @@ if __name__ == "__main__":
         choices=[
             "apollo-only", # Budget/testing mode — no Hunter, no Claude ✅
             "collect",     # Phase 1 ✅
+            "social",      # Free intent sources: Reddit + industrial forums ✅
             "enrich",      # Phase 1 ✅
             "score",       # Phase 1 ✅
             # "send",      # Phase 2 — uncomment when ready
@@ -472,6 +505,8 @@ if __name__ == "__main__":
         run_apollo_only(pages=2)
     elif args.step == "collect":
         run_collect(source=args.source)
+    elif args.step == "social":
+        run_social()
     elif args.step == "enrich":
         run_enrich()
     elif args.step == "score":

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, RefreshCw, Settings2, Plus, X, ChevronDown, ChevronUp, Zap, Users, CheckCircle, Clock } from 'lucide-react'
+import { Play, RefreshCw, Settings2, Plus, X, ChevronDown, ChevronUp, Zap, Users, CheckCircle, Clock, Rss } from 'lucide-react'
 import { pipelineApi } from './api'
 
 const pageAnim = {
@@ -65,6 +65,8 @@ export default function Pipeline({ user }) {
   const [stats, setStats]           = useState(null)
   const [running, setRunning]       = useState(false)
   const [lastRun, setLastRun]       = useState(null)
+  const [socialRunning, setSocialRunning] = useState(false)
+  const [socialRun, setSocialRun]   = useState(null)
   const [showFilters, setShowFilters] = useState(false)
   const [settings, setSettings]     = useState(null)
   const [saving, setSaving]         = useState(false)
@@ -133,6 +135,15 @@ export default function Pipeline({ user }) {
     fetchSettings()
     fetchRotation()
     startPoll()
+  }
+
+  const collectSocial = async () => {
+    setSocialRunning(true)
+    setSocialRun(new Date())
+    await pipelineApi.trigger('social').catch(console.error)
+    startPoll()
+    // Social runs take a little while (scrape + AI extraction); relax the button after a bit.
+    setTimeout(() => setSocialRunning(false), 8000)
   }
 
   const saveSettings = async () => {
@@ -219,6 +230,50 @@ export default function Pipeline({ user }) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Social sources card (free: Reddit + forums) */}
+      <div className="bg-white border border-slate-100 rounded-2xl p-6 mb-5 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Rss size={16} className="text-orange-500" />
+              <h2 className="text-base font-semibold text-slate-900">Collect Intent Leads (Free)</h2>
+              <span className="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded-full font-medium">no cost</span>
+            </div>
+            <p className="text-sm text-slate-500">
+              Scans Reddit (r/PLC, r/SCADA, r/manufacturing…) and industrial forums for people
+              describing automation problems, then uses AI to pull out the company, pain point, and intent.
+              Only medium/high-intent posts are saved.
+            </p>
+            {socialRun && (
+              <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                <Clock size={11} /> Last triggered {socialRun.toLocaleTimeString()}
+                {socialRunning && <span className="ml-2 text-orange-500 font-medium animate-pulse">— running…</span>}
+              </p>
+            )}
+          </div>
+          {canCollect && (
+            <button onClick={collectSocial} disabled={socialRunning}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm shrink-0
+                          ${socialRunning
+                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                            : 'bg-brand-600 hover:bg-brand-700 text-white'}`}>
+              {socialRunning
+                ? <><RefreshCw size={14} className="animate-spin" /> Running…</>
+                : <><Play size={14} /> Collect Social</>}
+            </button>
+          )}
+        </div>
+        <div className="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-500 leading-relaxed">
+          <span className="font-medium text-slate-600">Setup:</span> Forums work out of the box.
+          Reddit needs free API keys — create a “script” app at
+          {' '}<span className="font-mono text-slate-600">reddit.com/prefs/apps</span>{' '}
+          and set <span className="font-mono text-slate-600">REDDIT_CLIENT_ID</span> /
+          <span className="font-mono text-slate-600"> REDDIT_CLIENT_SECRET</span> in your environment.
+          Until then, Reddit is skipped automatically and forums still run.
+          Collected leads flow through the same Enrich → Score steps as Apollo.
+        </div>
       </div>
 
       {/* Pipeline funnel */}

@@ -7,3 +7,5 @@ fastapi
 uvicorn
 python-dotenv
 python-multipart      # required for file uploads (Excel/CSV import)
+praw                  # Reddit API client — free intent-source collector
+beautifulsoup4        # HTML parsing for the free industrial-forum collector

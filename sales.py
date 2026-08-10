@@ -438,6 +438,20 @@ def ensure_tables():
             updated_at  TEXT
         )
     """)
+    # Agent inbox — proposals from background agents awaiting human approval (L4)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS agent_inbox (
+            id          TEXT PRIMARY KEY,
+            kind        TEXT,                  -- prospect_email | stale_rfq | ...
+            title       TEXT,
+            summary     TEXT,
+            payload     TEXT,                  -- JSON proposal (type + params)
+            for_user    TEXT,                  -- who should review it
+            status      TEXT DEFAULT 'pending',-- pending | approved | dismissed
+            created_at  TEXT,
+            resolved_at TEXT
+        )
+    """)
     conn.commit()
     _seed_scripts(conn)
 
@@ -626,6 +640,53 @@ def bulk_assign(lead_ids: list[str], agent_id: str, by_user: dict) -> int:
         n += 1
     conn.commit(); conn.close()
     return n
+
+
+# ─── Agent inbox (L4 — background-agent proposals awaiting approval) ──────────
+
+def inbox_add(kind, title, summary, payload: dict, for_user: str) -> str:
+    conn = get_conn(); iid = str(uuid.uuid4())
+    conn.execute("INSERT INTO agent_inbox (id,kind,title,summary,payload,for_user,status,created_at) VALUES (?,?,?,?,?,?, 'pending', ?)",
+                 (iid, kind, title, summary, json.dumps(payload), for_user, datetime.utcnow().isoformat()))
+    conn.commit(); conn.close(); return iid
+
+def inbox_pending_lead_ids(for_user: str) -> set:
+    conn = get_conn()
+    rows = conn.execute("SELECT payload FROM agent_inbox WHERE for_user=? AND status='pending'", (for_user,)).fetchall()
+    conn.close()
+    ids = set()
+    for r in rows:
+        try: ids.add(json.loads(r[0]).get("lead_id"))
+        except Exception: pass
+    return ids
+
+def inbox_list(scope_user: dict) -> list[dict]:
+    ids = set(_agent_ids_for(scope_user)); ids.add(scope_user["id"])
+    if not ids: return []
+    conn = get_conn()
+    ph = ",".join("?" * len(ids))
+    rows = conn.execute(f"SELECT * FROM agent_inbox WHERE status='pending' AND for_user IN ({ph}) ORDER BY created_at DESC LIMIT 100", tuple(ids)).fetchall()
+    conn.close()
+    out = []
+    for r in rows:
+        d = dict(r)
+        try: d["payload"] = json.loads(d["payload"])
+        except Exception: d["payload"] = {}
+        out.append(d)
+    return out
+
+def inbox_get(iid: str) -> dict | None:
+    conn = get_conn(); r = conn.execute("SELECT * FROM agent_inbox WHERE id=?", (iid,)).fetchone(); conn.close()
+    if not r: return None
+    d = dict(r)
+    try: d["payload"] = json.loads(d["payload"])
+    except Exception: d["payload"] = {}
+    return d
+
+def inbox_resolve(iid: str, status: str):
+    conn = get_conn()
+    conn.execute("UPDATE agent_inbox SET status=?, resolved_at=? WHERE id=?", (status, datetime.utcnow().isoformat(), iid))
+    conn.commit(); conn.close()
 
 
 # ─── Activities ───────────────────────────────────────────────────────────────
@@ -943,6 +1004,39 @@ def agent_performance(agent_id: str, frm: str = "", to: str = "") -> dict:
     conn.close()
     return {"agent": _pub(dict(u)), "metrics": m, "weights": w,
             "recent": [dict(x) for x in recent]}
+
+
+# ─── WhatsApp outreach (scaffold — inactive until connected) ──────────────────
+
+def whatsapp_ready() -> bool:
+    tok = os.getenv("WHATSAPP_TOKEN", "")
+    pid = os.getenv("WHATSAPP_PHONE_ID", "")
+    return bool(tok and not tok.startswith("YOUR_") and pid and not pid.startswith("YOUR_"))
+
+def send_whatsapp(to_number: str, message: str) -> dict:
+    """Send a WhatsApp message via the Meta (WhatsApp Business) Cloud API.
+    Inactive until WHATSAPP_TOKEN + WHATSAPP_PHONE_ID are set — returns a clear
+    setup message rather than a fake success, exactly like the email path."""
+    if not to_number:
+        return {"ok": False, "error": "No recipient WhatsApp number"}
+    if not whatsapp_ready():
+        return {"ok": False, "configured": False,
+                "error": "WhatsApp isn't connected yet. Add WHATSAPP_TOKEN and WHATSAPP_PHONE_ID (Meta WhatsApp Business Cloud API) to enable sending."}
+    import httpx
+    tok = os.getenv("WHATSAPP_TOKEN"); pid = os.getenv("WHATSAPP_PHONE_ID")
+    num = "".join(ch for ch in str(to_number) if ch.isdigit())
+    try:
+        resp = httpx.post(f"https://graph.facebook.com/v20.0/{pid}/messages",
+                          headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"},
+                          json={"messaging_product": "whatsapp", "to": num,
+                                "type": "text", "text": {"body": message}}, timeout=20)
+        if resp.status_code in (200, 201):
+            data = resp.json()
+            mid = (data.get("messages") or [{}])[0].get("id", "")
+            return {"ok": True, "configured": True, "provider_id": mid}
+        return {"ok": False, "configured": True, "error": f"WhatsApp error {resp.status_code}: {resp.text[:200]}"}
+    except Exception as e:
+        return {"ok": False, "configured": True, "error": str(e)}
 
 
 # ─── Brevo email (ready-but-inactive until configured) ────────────────────────

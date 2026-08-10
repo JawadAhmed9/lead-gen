@@ -7,9 +7,9 @@ import {
   BarChart3, Activity as ActivityIcon, Trophy, UserCog,
   ChevronDown, KeyRound, Command, CalendarClock, FileText, FileCheck,
   Cpu, Factory, ShieldCheck, TrendingUp, Infinity as InfinityIcon, Mail as MailIcon, Phone, Globe,
-  Menu as MenuIcon,
+  Menu as MenuIcon, Bell, Rocket,
 } from 'lucide-react'
-import { auth, usersApi, can } from './api'
+import { auth, usersApi, can, notificationsApi } from './api'
 import { Logo, Wordmark } from './Logo'
 import Dashboard from './Dashboard'
 import Leads from './Leads'
@@ -23,6 +23,8 @@ import MyDay from './MyDay'
 import Scripts from './Scripts'
 import RfqPipeline from './RfqPipeline'
 import Team from './Team'
+import Roadmap from './Roadmap'
+import Copilot from './Copilot'
 import { ToastProvider, ConfirmProvider, CommandPalette, useToast, useConfirm } from './ui'
 
 // ─── Auth context ─────────────────────────────────────────────────────────────
@@ -408,6 +410,7 @@ const NAV = [
   { to: '/compose',    label: 'Compose',     icon: Mail,            roles: ['admin', 'manager', 'agent'] },
   { to: '/team',       label: 'Team',        icon: UserCog,         roles: ['admin', 'manager'] },
   { to: '/scripts',    label: 'Scripts',     icon: FileText,        roles: ['admin', 'manager', 'agent'] },
+  { to: '/roadmap',    label: 'Roadmap',     icon: Rocket,          roles: ['admin', 'manager', 'agent', 'viewer'] },
   { to: '/activity',   label: 'Activity',    icon: ActivityIcon,    roles: ['admin', 'manager'] },
 ]
 
@@ -534,6 +537,43 @@ function ChangePasswordModal({ onClose }) {
 }
 
 // ─── Top bar ────────────────────────────────────────────────────────────────
+function NotificationBell() {
+  const navg = useNavigate()
+  const [items, setItems] = useState([])
+  const [open, setOpen] = useState(false)
+  const [seen, setSeen] = useState(false)
+  useEffect(() => { notificationsApi.list().then(r => setItems(r.items || [])).catch(() => {}) }, [])
+  const count = items.length
+  return (
+    <div className="relative">
+      <button onClick={() => { setOpen(o => !o); setSeen(true) }} aria-label="Notifications"
+        className="relative p-2 rounded-lg hover:bg-slate-50 text-slate-500 transition-colors">
+        <Bell size={18} />
+        {count > 0 && !seen && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-panel z-40 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 text-sm font-semibold text-slate-900">Notifications</div>
+            {count === 0
+              ? <div className="px-4 py-8 text-center text-sm text-slate-400">You're all caught up.</div>
+              : <div className="max-h-80 overflow-y-auto">
+                  {items.map(n => (
+                    <button key={n.id} onClick={() => { setOpen(false); if (n.route) navg(n.route) }}
+                      className="w-full text-left px-4 py-2.5 hover:bg-slate-50 border-b border-slate-50 last:border-0">
+                      <p className="text-sm text-slate-800">{n.title}</p>
+                      {n.sub && <p className="text-xs text-slate-400 mt-0.5">{n.sub}</p>}
+                    </button>
+                  ))}
+                </div>}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function TopBar({ onMenu }) {
   const { user, logout } = useAuth()
   const [menu, setMenu] = useState(false)
@@ -555,7 +595,8 @@ function TopBar({ onMenu }) {
         <Command size={12} /> Quick search
         <kbd className="ml-1 text-[10px] bg-slate-100 rounded px-1">⌘K</kbd>
       </button>
-      <div className="relative ml-auto">
+      <div className="ml-auto"><NotificationBell /></div>
+      <div className="relative">
         <button onClick={() => setMenu(m => !m)}
           className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors">
           <span className="w-8 h-8 rounded-full bg-brand-600 text-white text-xs font-semibold flex items-center justify-center">
@@ -617,6 +658,7 @@ function Layout() {
             <Route path="/performance" element={<Performance />} />
             <Route path="/rfqs"        element={<RfqPipeline />} />
             <Route path="/scripts"     element={<Scripts />} />
+            <Route path="/roadmap"     element={<Roadmap />} />
             <Route path="/pipeline"    element={<Pipeline user={user} />} />
             <Route path="/compose"     element={<Compose />} />
             <Route path="/team"        element={<Team />} />
@@ -628,6 +670,7 @@ function Layout() {
       </div>
 
       <CommandPalette />
+      <Copilot />
 
       <AnimatePresence>
         {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}

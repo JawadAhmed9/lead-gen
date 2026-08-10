@@ -144,6 +144,26 @@ export const usersApi = {
   remove:     (id)          => del(`/users/${id}`),
 }
 
+// ─── Copilot agent (L1 — read-only) ──────────────────────────────────────────
+export const agentApi = {
+  chat:         (messages) => post('/agent/chat', { messages }),
+  inbox:        ()         => get('/agent/inbox'),
+  runJobs:      ()         => post('/agent/jobs/run'),
+  inboxApprove: (id)       => post(`/agent/inbox/${id}/approve`),
+  inboxDismiss: (id)       => post(`/agent/inbox/${id}/dismiss`),
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+export const notificationsApi = {
+  list: () => get('/notifications'),
+}
+
+// ─── WhatsApp outreach (scaffold) ─────────────────────────────────────────────
+export const whatsappApi = {
+  status: ()     => get('/whatsapp/status'),
+  send:   (data) => post('/whatsapp/send', data),
+}
+
 // ─── RBAC helper — can this user do X? ────────────────────────────────────────
 // actions: view, edit, delete, send, manage (team), assign (leads), log (activity)
 const PERMS = {
