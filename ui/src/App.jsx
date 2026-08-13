@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -8,6 +8,7 @@ import {
   ChevronDown, KeyRound, Command, CalendarClock, FileText, FileCheck,
   Cpu, Factory, ShieldCheck, TrendingUp, Infinity as InfinityIcon, Mail as MailIcon, Phone, Globe,
   Menu as MenuIcon, Bell, Rocket,
+  Eye, EyeOff, AlertCircle, AlertTriangle, Lock,
 } from 'lucide-react'
 import { auth, usersApi, can, notificationsApi } from './api'
 import { Logo, Wordmark } from './Logo'
@@ -25,6 +26,7 @@ import RfqPipeline from './RfqPipeline'
 import Team from './Team'
 import Roadmap from './Roadmap'
 import Copilot from './Copilot'
+import { ThemeProvider, ThemeToggle, ThemeSegmented } from './theme'
 import { ToastProvider, ConfirmProvider, CommandPalette, useToast, useConfirm } from './ui'
 
 // ─── Auth context ─────────────────────────────────────────────────────────────
@@ -56,59 +58,86 @@ function Input({ label, error, ...props }) {
   )
 }
 
-// ─── Login ────────────────────────────────────────────────────────────────────
-const CAPABILITIES = [
-  { icon: Cpu,         label: 'Artificial Intelligence' },
-  { icon: Factory,     label: 'Industrial Automation' },
-  { icon: BarChart3,   label: 'Smart Analytics' },
-  { icon: ShieldCheck, label: 'Secure & Reliable' },
-  { icon: TrendingUp,  label: 'Data-Driven Decisions' },
-  { icon: InfinityIcon,label: 'Continuous Innovation' },
-]
+// ─── Login (Constellation + Spotlight) ───────────────────────────────────────
+function useCountUp(target, dur = 1400) {
+  const [v, setV] = useState(0)
+  useEffect(() => {
+    let raf, t0
+    const step = (t) => { if (!t0) t0 = t; const p = Math.min(1, (t - t0) / dur); setV(Math.round(target * (1 - Math.pow(1 - p, 4)))); if (p < 1) raf = requestAnimationFrame(step) }
+    raf = requestAnimationFrame(step); return () => cancelAnimationFrame(raf)
+  }, [target, dur])
+  return v
+}
+
+function ConstellationCanvas() {
+  const ref = useRef(null)
+  useEffect(() => {
+    const c = ref.current; if (!c) return
+    const ctx = c.getContext('2d'); let w, h, nodes, raf
+    const mouse = { x: -999, y: -999 }
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
+    const size = () => { const r = c.getBoundingClientRect(); const dpr = Math.min(devicePixelRatio || 1, 2); c.width = r.width * dpr; c.height = r.height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); w = r.width; h = r.height }
+    const init = () => { const n = Math.min(80, Math.floor(w * h / 13000)); nodes = Array.from({ length: n }, () => ({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - .5) * .25, vy: (Math.random() - .5) * .25, hex: Math.random() < .16, tw: Math.random() * Math.PI * 2 })) }
+    const hexagon = (x, y, r) => { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 3 * i - Math.PI / 2; const px = x + r * Math.cos(a), py = y + r * Math.sin(a); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py) } ctx.closePath() }
+    const frame = () => {
+      ctx.clearRect(0, 0, w, h)
+      for (let i = 0; i < nodes.length; i++) { const a = nodes[i]
+        for (let j = i + 1; j < nodes.length; j++) { const b = nodes[j]; const dx = a.x - b.x, dy = a.y - b.y; const d = Math.hypot(dx, dy)
+          if (d < 130) { ctx.strokeStyle = `rgba(90,160,255,${(1 - d / 130) * .18})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke() } } }
+      for (const p of nodes) {
+        if (!reduce) { p.x += p.vx; p.y += p.vy; if (p.x < 0 || p.x > w) p.vx *= -1; if (p.y < 0 || p.y > h) p.vy *= -1
+          const mdx = p.x - mouse.x, mdy = p.y - mouse.y, md = Math.hypot(mdx, mdy); if (md < 130 && md > 0) { const f = (130 - md) / 130 * .6; p.x += mdx / md * f; p.y += mdy / md * f }
+          p.tw += .03 }
+        const tw = .6 + Math.sin(p.tw) * .4
+        if (p.hex) { ctx.strokeStyle = `rgba(150,200,255,${.5 * tw})`; ctx.lineWidth = 1; hexagon(p.x, p.y, 3.4); ctx.stroke() }
+        else { ctx.fillStyle = `rgba(134,190,255,${.5 * tw})`; ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, 7); ctx.fill() }
+      }
+      if (!reduce) raf = requestAnimationFrame(frame)
+    }
+    size(); init(); frame()
+    const onMove = (e) => { const r = c.getBoundingClientRect(); mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top }
+    const onResize = () => { size(); init() }
+    c.addEventListener('mousemove', onMove); window.addEventListener('resize', onResize)
+    return () => { cancelAnimationFrame(raf); c.removeEventListener('mousemove', onMove); window.removeEventListener('resize', onResize) }
+  }, [])
+  return <canvas ref={ref} className="absolute inset-0 w-full h-full" />
+}
 
 function BrandPanel() {
+  const s1 = useCountUp(13500), s2 = useCountUp(6), s3 = useCountUp(150)
+  // Everything here sits on a permanently-dark navy panel, so all text uses
+  // FIXED light colors (never remapped slate classes, which would flip to dark).
   return (
-    <div className="hidden lg:flex relative w-[56%] flex-col justify-between overflow-hidden bg-navy-950 text-white">
-      {/* glowing hexagon hero as atmospheric background */}
-      <div className="absolute inset-x-0 top-0 h-[62%] bg-cover bg-center opacity-80"
-           style={{ backgroundImage: "url('/brand/hero-glow.jpg')" }} />
-      {/* gradients: blend image into navy + darken bottom for legibility */}
-      <div className="absolute inset-0"
-           style={{ background: 'radial-gradient(120% 80% at 50% 12%, rgba(43,132,255,.18), transparent 55%), linear-gradient(180deg, rgba(6,11,24,.15) 0%, rgba(6,11,24,.55) 46%, #060B18 78%)' }} />
-      {/* subtle blue edge glow */}
-      <div className="absolute -right-1 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-brand-500/40 to-transparent" />
+    <div className="hidden lg:flex relative w-[56%] flex-col justify-between overflow-hidden" style={{ background: '#06070B' }}>
+      <ConstellationCanvas />
+      <div className="pointer-events-none absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full" style={{ background: 'rgba(43,132,255,.42)', filter: 'blur(84px)' }} />
+      <div className="pointer-events-none absolute -bottom-24 -right-16 w-[360px] h-[360px] rounded-full" style={{ background: 'rgba(29,224,211,.2)', filter: 'blur(84px)' }} />
+      <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-px" style={{ background: 'linear-gradient(180deg,transparent,rgba(43,132,255,.4),transparent)' }} />
 
-      {/* top: clean lockup */}
-      <div className="relative z-10 p-10">
-        <Wordmark size={30} subtitle dark />
-      </div>
+      <div className="relative z-10 p-10"><Wordmark size={30} subtitle dark /></div>
 
-      {/* center: headline */}
-      <div className="relative z-10 px-10 -mt-6">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-medium text-brand-200 mb-5 backdrop-blur-sm">
+      <div className="relative z-10 px-10 -mt-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium mb-6"
+             style={{ background: 'rgba(255,255,255,.08)', borderColor: 'rgba(255,255,255,.14)', color: '#bcd4f5' }}>
           <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse" /> AI-Powered Lead Generation
         </div>
-        <h1 className="text-[2.6rem] leading-[1.08] font-bold tracking-tight max-w-md">
-          Powering <span className="text-brand-400">Intelligent</span> Industries
+        <h1 className="text-[2.6rem] leading-[1.06] font-bold tracking-tight text-white max-w-md">
+          Every enterprise is a <span style={{ background: 'linear-gradient(90deg,#86BEFF,#2B84FF,#1DE0D3)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>signal</span>.
         </h1>
-        <p className="mt-4 text-slate-300 text-[15px] leading-relaxed max-w-md">
-          AI-driven solutions for automation, optimization, and growth — turning the GCC industrial market into your pipeline.
+        <p className="mt-4 text-[15px] leading-relaxed max-w-md" style={{ color: 'rgba(255,255,255,.6)' }}>
+          AI-driven discovery, scoring and outreach — turning the GCC industrial market into your pipeline.
         </p>
-
-        {/* capability pills */}
-        <div className="mt-8 grid grid-cols-2 gap-2.5 max-w-lg">
-          {CAPABILITIES.map(({ icon: Icon, label }) => (
-            <div key={label}
-                 className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[.06] border border-white/10 backdrop-blur-sm">
-              <Icon size={16} className="text-brand-400 shrink-0" />
-              <span className="text-[13px] font-medium text-slate-200">{label}</span>
+        <div className="mt-9 flex gap-10">
+          {[[s1.toLocaleString() + '+', 'Leads sourced'], [s2, 'GCC markets'], [s3 + '+', 'ICP signals']].map(([v, l]) => (
+            <div key={l}>
+              <div className="text-2xl font-bold text-white tabular-nums">{v}</div>
+              <div className="text-[10px] uppercase tracking-widest mt-1" style={{ color: '#8fa2b8' }}>{l}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* footer: contact */}
-      <div className="relative z-10 p-10 flex items-center gap-6 text-[13px] text-slate-400 border-t border-white/10 mt-8">
+      <div className="relative z-10 p-10 flex items-center gap-6 text-[13px]" style={{ color: 'rgba(255,255,255,.5)', borderTop: '1px solid rgba(255,255,255,.1)' }}>
         <span className="flex items-center gap-1.5"><MailIcon size={13} className="text-brand-400" /> info@stemronic.com</span>
         <span className="flex items-center gap-1.5"><Globe size={13} className="text-brand-400" /> stemronic.com</span>
         <span className="flex items-center gap-1.5"><Phone size={13} className="text-brand-400" /> +92 123 456 7890</span>
@@ -120,70 +149,111 @@ function BrandPanel() {
 function Login({ onLogin }) {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
+  const [show, setShow]         = useState(false)
+  const [keep, setKeep]         = useState(true)
+  const [caps, setCaps]         = useState(false)
   const [error, setError]       = useState('')
   const [busy, setBusy]         = useState(false)
+  const paneRef = useRef(null)
+  const emailValid = !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
   const submit = async (e) => {
     e.preventDefault()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('Enter a valid email address'); return }
     setBusy(true); setError('')
     try {
       const res = await auth.login(email, password)
       localStorage.setItem('lp_token', res.token)
       onLogin(res.user)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setBusy(false)
-    }
+    } catch (err) { setError(err.message) } finally { setBusy(false) }
   }
+  const onMove = (e) => {
+    const el = paneRef.current; if (!el) return
+    const r = el.getBoundingClientRect()
+    el.style.setProperty('--mx', (e.clientX - r.left) + 'px')
+    el.style.setProperty('--my', (e.clientY - r.top) + 'px')
+  }
+  const onCaps = (e) => { try { setCaps(!!(e.getModifierState && e.getModifierState('CapsLock'))) } catch (_) {} }
+  const field = "w-full pl-9 pr-3 py-2.5 rounded-xl bg-elevated/60 border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-transparent transition"
 
   return (
     <div className="min-h-screen flex bg-white">
+      <div className="fixed top-4 right-4 z-50"><ThemeToggle /></div>
       <BrandPanel />
 
-      {/* right: sign-in */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
+      {/* right: cursor spotlight + sign-in */}
+      <div ref={paneRef} onMouseMove={onMove} className="flex-1 relative flex items-center justify-center p-6 sm:p-10 overflow-hidden">
+        <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(120,140,170,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(120,140,170,.10) 1px,transparent 1px)', backgroundSize: '56px 56px' }} />
+        <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(110,180,255,.8) 1px,transparent 1px),linear-gradient(90deg,rgba(110,180,255,.8) 1px,transparent 1px)', backgroundSize: '56px 56px', WebkitMaskImage: 'radial-gradient(300px circle at var(--mx,50%) var(--my,50%),#000,transparent 70%)', maskImage: 'radial-gradient(300px circle at var(--mx,50%) var(--my,50%),#000,transparent 70%)' }} />
+        <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(440px circle at var(--mx,50%) var(--my,50%),rgba(43,132,255,.13),transparent 70%)' }} />
+
         <motion.div
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
-          className="w-full max-w-[380px]"
-        >
-          {/* mark + heading */}
-          <div className="flex items-center gap-2.5 mb-8 lg:mb-9">
-            <Logo size={40} />
-            <div className="leading-none lg:hidden">
-              <div className="font-bold tracking-tight text-navy-900 text-lg">Stemronic <span className="text-brand-500">AI</span></div>
-              <div className="uppercase tracking-[0.18em] text-[9px] text-slate-400 mt-1">Lead Gen Platform</div>
+          initial={{ opacity: 0, y: 22, scale: .978, filter: 'blur(5px)' }}
+          animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+          transition={{ duration: .8, ease: [.16, 1, .3, 1] }}
+          className="tl-card relative w-full max-w-[400px] z-10">
+          <div className="relative rounded-[21px] p-8 bg-surface shadow-lift">
+            <div className="flex items-center gap-2.5 mb-7">
+              <Logo size={38} />
+              <div className="leading-none">
+                <div className="font-bold tracking-tight text-slate-900 text-base">Stemronic <span className="text-brand-500">AI</span></div>
+                <div className="uppercase tracking-[0.18em] text-[8.5px] text-slate-400 mt-1">Lead Gen Platform</div>
+              </div>
             </div>
+
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">Sign in to Stemronic AI</h1>
+            <p className="text-sm text-slate-500 mb-6">Welcome back — access your lead-gen workspace.</p>
+
+            {error && (
+              <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm flex items-center gap-2">
+                <AlertCircle size={15} /> {error}
+              </div>
+            )}
+
+            <form onSubmit={submit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Email</label>
+                <div className="relative">
+                  <MailIcon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoFocus
+                    placeholder="you@stemronic.com" className={field} />
+                </div>
+                {!emailValid && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle size={12} /> Enter a valid email</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Password</label>
+                <div className="relative">
+                  <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input type={show ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                    onKeyUp={onCaps} onKeyDown={onCaps} required placeholder="••••••••" className={field + ' pr-10'} />
+                  <button type="button" onClick={() => setShow(s => !s)} aria-label="Toggle password visibility"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    {show ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                {caps && <p className="mt-1 text-xs text-amber-500 flex items-center gap-1"><AlertTriangle size={12} /> Caps Lock is on</p>}
+              </div>
+
+              <label className="flex items-center gap-2 text-xs text-slate-600 select-none cursor-pointer">
+                <input type="checkbox" checked={keep} onChange={e => setKeep(e.target.checked)} className="w-4 h-4 rounded accent-brand-600" />
+                Keep me signed in
+              </label>
+
+              <button type="submit" disabled={busy}
+                className="w-full py-2.5 rounded-xl text-white font-semibold text-sm mt-1 transition-all hover:brightness-105 active:scale-[.988] disabled:opacity-60"
+                style={{ background: 'linear-gradient(90deg,#4F9EFF,#2B84FF,#1059C8)', boxShadow: '0 10px 26px -8px rgba(43,132,255,.55)' }}>
+                {busy
+                  ? <span className="inline-flex items-center gap-2"><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Signing in…</span>
+                  : 'Sign in'}
+              </button>
+              <p className="text-center text-[11px] text-slate-400">Press ↵ to sign in</p>
+            </form>
+
+            <p className="mt-6 text-center text-[11px] text-slate-400">
+              © {new Date().getFullYear()} Stemronic AI · Intelligent Solutions, Industrial Impact
+            </p>
           </div>
-
-          <h1 className="text-2xl font-bold text-navy-900 tracking-tight mb-1">Sign in to Stemronic AI</h1>
-          <p className="text-sm text-slate-500 mb-7">Welcome back — access your lead-gen workspace.</p>
-
-          {error && (
-            <div className="mb-5 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={submit} className="space-y-4">
-            <Input label="Email" type="email" value={email}
-              onChange={e => setEmail(e.target.value)} required autoFocus placeholder="you@stemronic.com" />
-            <Input label="Password" type="password" value={password}
-              onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
-            <button
-              type="submit" disabled={busy}
-              className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold
-                         rounded-lg text-sm transition-colors disabled:opacity-50 mt-2 shadow-sm
-                         shadow-brand-600/20"
-            >
-              {busy ? 'Signing in…' : 'Sign in'}
-            </button>
-          </form>
-
-          <p className="mt-8 text-center text-xs text-slate-400">
-            © {new Date().getFullYear()} Stemronic AI · Intelligent Solutions, Industrial Impact
-          </p>
         </motion.div>
       </div>
     </div>
@@ -256,6 +326,13 @@ function SettingsPanel({ onClose }) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-7 py-6 space-y-8">
+          {/* Appearance */}
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700 mb-1">Appearance</h3>
+            <p className="text-xs text-slate-500 mb-3">Choose light, dark, or follow your system.</p>
+            <ThemeSegmented />
+          </div>
+
           {/* Members list */}
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -595,7 +672,10 @@ function TopBar({ onMenu }) {
         <Command size={12} /> Quick search
         <kbd className="ml-1 text-[10px] bg-slate-100 rounded px-1">⌘K</kbd>
       </button>
-      <div className="ml-auto"><NotificationBell /></div>
+      <div className="ml-auto flex items-center gap-0.5">
+        <ThemeToggle />
+        <NotificationBell />
+      </div>
       <div className="relative">
         <button onClick={() => setMenu(m => !m)}
           className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors">
@@ -680,7 +760,7 @@ function Layout() {
 }
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
-export default function App() {
+function AppInner() {
   const [user, setUser]       = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -718,5 +798,13 @@ export default function App() {
         </Ctx.Provider>
       </ConfirmProvider>
     </ToastProvider>
+  )
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppInner />
+    </ThemeProvider>
   )
 }

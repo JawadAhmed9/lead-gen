@@ -5,17 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Stemronic AI — Lead Gen Platform</title>
 
+    <!-- No-flash theme: set data-theme before first paint -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('elchai_theme');
+          var dark = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
+      })();
+    </script>
+
     <!-- Favicon: Stemronic hexagon-node mark -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236BB8FF'/%3E%3Cstop offset='.55' stop-color='%232B84FF'/%3E%3Cstop offset='1' stop-color='%230B57D0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='none' stroke='url(%23g)' stroke-linejoin='round'%3E%3Cpolygon points='50,4 89.8,27 89.8,73 50,96 10.2,73 10.2,27' stroke-width='6'/%3E%3C/g%3E%3Cg fill='url(%23g)'%3E%3Ccircle cx='50' cy='50' r='7'/%3E%3Ccircle cx='50' cy='29' r='6'/%3E%3Ccircle cx='68' cy='39' r='6'/%3E%3Ccircle cx='68' cy='61' r='6'/%3E%3Ccircle cx='50' cy='71' r='6'/%3E%3Ccircle cx='32' cy='61' r='6'/%3E%3Ccircle cx='32' cy='39' r='6'/%3E%3C/g%3E%3C/svg%3E" />
 
     <!-- Tailwind CDN (Play CDN — JIT, works without config files) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+      // Slate scale is remapped to CSS variables so every existing text-slate-*/
+      // bg-slate-*/border-slate-* becomes theme-aware with zero component edits.
+      const s = (n) => `rgb(var(--s-${n}) / <alpha-value>)`
+      const tok = (v) => `rgb(var(--${v}) / <alpha-value>)`
       tailwind.config = {
+        darkMode: ['selector', '[data-theme="dark"]'],
         theme: {
           extend: {
             fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
             colors: {
+              slate: { 50: s(50), 100: s(100), 200: s(200), 300: s(300), 400: s(400),
+                       500: s(500), 600: s(600), 700: s(700), 800: s(800), 900: s(900), 950: s(950) },
+              canvas: tok('canvas'), surface: tok('surface'), elevated: tok('elevated'),
+              sidebar: tok('sidebar'), ink: tok('ink'), hairline: tok('hairline'), teal: tok('teal'),
               navy: { 950: '#060B18', 900: '#0F172A', 800: '#1E293B', 700: '#334155' },
               brand: {
                 50: '#ECF5FF', 100: '#D9EBFF', 200: '#B6D8FF', 300: '#86BEFF',
@@ -26,6 +46,7 @@
             boxShadow: {
               card: '0 1px 3px 0 rgb(0 0 0 / .06), 0 1px 2px -1px rgb(0 0 0 / .04)',
               panel: '0 8px 32px -4px rgb(0 0 0 / .12), 0 2px 8px -2px rgb(0 0 0 / .08)',
+              lift: '0 12px 40px -8px rgb(0 0 0 / .18), 0 4px 12px -4px rgb(0 0 0 / .10)',
             },
           },
         },
@@ -38,26 +59,85 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
     <style>
+      /* ── Theme tokens ─────────────────────────────────────────────── */
+      :root, [data-theme="light"] {
+        --s-50:248 250 252; --s-100:241 245 249; --s-200:226 232 240; --s-300:203 213 225;
+        --s-400:148 163 184; --s-500:100 116 139; --s-600:71 85 105; --s-700:51 65 85;
+        --s-800:30 41 59;    --s-900:15 23 42;    --s-950:2 6 23;
+        --canvas:248 250 252; --surface:255 255 255; --elevated:255 255 255;
+        --sidebar:15 23 42;   --ink:15 23 42;      --hairline:226 232 240; --teal:29 224 211;
+        --scroll:203 213 225;
+      }
+      [data-theme="dark"] {
+        --s-50:15 18 26;   --s-100:22 27 37;  --s-200:33 40 53;  --s-300:51 61 79;
+        --s-400:122 138 160; --s-500:148 163 184; --s-600:176 189 208; --s-700:203 213 225;
+        --s-800:226 232 240; --s-900:243 246 251; --s-950:248 250 252;
+        --canvas:6 7 11;    --surface:13 15 21;  --elevated:19 23 32;
+        --sidebar:6 7 11;   --ink:243 246 251;   --hairline:34 40 53;  --teal:29 224 211;
+        --scroll:51 61 79;
+      }
+
       *, *::before, *::after { box-sizing: border-box; }
       html, body, #root { height: 100%; margin: 0; }
-      body { font-family: 'Inter', system-ui, sans-serif; background: #F8FAFC; -webkit-font-smoothing: antialiased; }
-      ::-webkit-scrollbar { width: 5px; height: 5px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
-      ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
-      ::selection { background: #BFDBFE; }
+      body { font-family: 'Inter', system-ui, sans-serif; background: rgb(var(--canvas)); color: rgb(var(--ink)); -webkit-font-smoothing: antialiased; }
 
-      /* Skeleton shimmer */
-      @keyframes shimmer {
-        0%   { background-position: -600px 0; }
-        100% { background-position: 600px 0; }
+      /* Color-only crossfade while switching themes (no layout reflow) */
+      html.theme-anim, html.theme-anim * {
+        transition: background-color .32s ease, color .32s ease, border-color .32s ease, fill .32s ease, stroke .32s ease, box-shadow .32s ease !important;
       }
+
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: rgb(var(--scroll)); border-radius: 10px; }
+      ::selection { background: rgba(43,132,255,.28); }
+
+      @keyframes shimmer { 0% { background-position: -600px 0; } 100% { background-position: 600px 0; } }
       .skeleton {
-        background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
-        background-size: 600px 100%;
-        animation: shimmer 1.4s infinite;
-        border-radius: 4px;
+        background: linear-gradient(90deg, rgb(var(--s-100)) 25%, rgb(var(--s-200)) 50%, rgb(var(--s-100)) 75%);
+        background-size: 600px 100%; animation: shimmer 1.4s infinite; border-radius: 4px;
       }
+
+      /* ── Dark-mode fixups for classes the slate-remap can't reach ──── */
+      /* White card surfaces → theme surface */
+      [data-theme="dark"] .bg-white { background-color: rgb(var(--surface)) !important; }
+      /* Navy heading/wordmark text → ink */
+      [data-theme="dark"] .text-navy-900, [data-theme="dark"] .text-navy-800 { color: rgb(var(--ink)) !important; }
+      /* Sidebar sits a touch darker in dark mode */
+      [data-theme="dark"] .bg-navy-900 { background-color: rgb(var(--sidebar)) !important; }
+      /* Modal/drawer scrims must stay dark (slate-900 flips light) */
+      [data-theme="dark"] .bg-slate-900\/25,
+      [data-theme="dark"] .bg-slate-900\/30,
+      [data-theme="dark"] .bg-slate-900\/40,
+      [data-theme="dark"] .bg-slate-900\/50,
+      [data-theme="dark"] .bg-slate-900\/60 { background-color: rgba(2,3,7,.62) !important; }
+      /* Form controls readable on dark */
+      [data-theme="dark"] input, [data-theme="dark"] textarea, [data-theme="dark"] select { color: rgb(var(--ink)); }
+      [data-theme="dark"] input::placeholder, [data-theme="dark"] textarea::placeholder { color: rgb(var(--s-400)); }
+      /* Light blue tints used as drop/hover highlights read on dark */
+      [data-theme="dark"] .bg-blue-50\/40 { background-color: rgba(43,132,255,.12) !important; }
+
+      /* Login: "travelling light" animated card border */
+      @property --a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+      @keyframes tl-spin { to { --a: 360deg; } }
+      .tl-card::before {
+        content: ''; position: absolute; inset: 0; border-radius: 22px; padding: 1px; pointer-events: none;
+        background: conic-gradient(from var(--a), rgba(79,158,255,.95), rgba(29,224,211,.6), rgba(79,158,255,0) 42%, rgba(79,158,255,.95));
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor; mask-composite: exclude; animation: tl-spin 7s linear infinite;
+      }
+      @media (prefers-reduced-motion: reduce) { .tl-card::before { animation: none; } }
+
+      /* Charts (recharts) react to theme in dark mode */
+      [data-theme="dark"] .recharts-cartesian-grid line { stroke: rgba(255,255,255,.07) !important; }
+      [data-theme="dark"] .recharts-cartesian-axis line,
+      [data-theme="dark"] .recharts-cartesian-axis-line,
+      [data-theme="dark"] .recharts-cartesian-axis-tick-line { stroke: rgba(255,255,255,.12) !important; }
+      [data-theme="dark"] .recharts-text,
+      [data-theme="dark"] .recharts-cartesian-axis-tick-value tspan { fill: rgb(var(--s-500)) !important; }
+      [data-theme="dark"] .recharts-default-tooltip {
+        background: rgb(var(--elevated)) !important; border-color: rgb(var(--hairline)) !important; color: rgb(var(--ink)) !important;
+      }
+      [data-theme="dark"] .recharts-tooltip-item { color: rgb(var(--ink)) !important; }
     </style>
   </head>
   <body>
